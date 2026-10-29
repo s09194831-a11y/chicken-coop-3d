@@ -118,6 +118,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body);overflow
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/objects/Sky.js"></script>
 <script>
 (function(){
 'use strict';
@@ -367,18 +368,26 @@ cellList.forEach((cl,i)=>{
 function ellip(sx,sy,sz,x,y,z,rx){const g=new THREE.SphereGeometry(1,14,10);g.scale(sx,sy,sz);if(rx)g.rotateX(rx);g.translate(x,y,z);return g;}
 const hensG=group(scene,'ไก่ไข่สีน้ำตาล','ในเล้ามีไก่ '+hens.length+' ตัว ในโมเดลใส่ช่องละ 1–2 ตัว',true);
 const browns=['#8e4a22','#9b5428','#7f401d','#a65e2e','#8a4a2a'].map(c=>new THREE.Color(c));
+const legGeo=x=>{const g=new THREE.CylinderGeometry(0.007,0.006,0.08,6);g.translate(x,0.04,0.0);return g;};
 const henBodyParts=[
   {geo:ellip(0.105,0.115,0.17,0,0.17,-0.02),tone:0},
   {geo:ellip(0.065,0.085,0.07,0,0.245,0.075),tone:0.12},
   {geo:ellip(0.055,0.1,0.07,0,0.26,-0.17,-0.5),tone:-0.22},
+  {geo:ellip(0.03,0.07,0.12,0.093,0.18,-0.035),tone:-0.12},          // wings
+  {geo:ellip(0.03,0.07,0.12,-0.093,0.18,-0.035),tone:-0.12},
+  {geo:ellip(0.045,0.05,0.05,0,0.23,-0.2,-0.9),tone:0.35},           // pale tail tips
+  {geo:legGeo(0.035),color:0xd9a441},{geo:legGeo(-0.035),color:0xd9a441},
 ];
 const beakGeo=new THREE.ConeGeometry(0.016,0.045,6);beakGeo.rotateX(Math.PI/2);beakGeo.translate(0,0.075,0.115);
-const combGeo=new THREE.BoxGeometry(0.014,0.042,0.065);combGeo.translate(0,0.135,0.045);
 const henHeadParts=[
   {geo:ellip(0.052,0.055,0.058,0,0.08,0.05),tone:0.08},
-  {geo:combGeo,color:0xd2302a},
+  {geo:ellip(0.008,0.022,0.013,0,0.145,0.07),color:0xd2302a},         // comb in three lobes
+  {geo:ellip(0.008,0.027,0.013,0,0.15,0.045),color:0xd2302a},
+  {geo:ellip(0.008,0.021,0.013,0,0.142,0.02),color:0xd2302a},
   {geo:ellip(0.013,0.024,0.013,0,0.03,0.093),color:0xc0281f},
   {geo:beakGeo,color:0xe8b24a},
+  {geo:ellip(0.009,0.009,0.009,0.042,0.09,0.075),color:0x15110d},     // eyes
+  {geo:ellip(0.009,0.009,0.009,-0.042,0.09,0.075),color:0x15110d},
 ];
 const henBase=hens.map(()=>browns[(R()*browns.length)|0]);
 function makeInst(part,count){
@@ -660,12 +669,73 @@ tree(6.2,1.6,1.0);tree(-4.4,-0.6,1.05);tree(5.0,-2.6,1.1);tree(-3.0,5.4,0.9);
   const pts=[];
   while(pts.length<320){const x=(R()-0.5)*16,z=-2.6+R()*11;if(x>XL-0.15&&x<XR+0.15&&z<ZFENCE+0.1)continue;pts.push([x,z]);}
   for(let i=0;i<40;i++)pts.push([XL+0.1+R()*(XR-XL-0.2),R()<0.5?ZF+0.05+R()*0.08:ZFENCE-0.25+R()*0.18]);
-  const cone=new THREE.ConeGeometry(0.04,0.16,4);cone.translate(0,0.08,0);
+  const cone=new THREE.ConeGeometry(0.035,0.12,5);cone.translate(0,0.06,0);
   const im=new THREE.InstancedMesh(cone,std({color:0xffffff,flatShading:true}),pts.length);
   im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(pts.length*3),3);
-  const gc=['#5d8a3a','#77a44e','#4c7a30','#8cb35e'].map(c=>new THREE.Color(c));
+  const gc=['#4f7a30','#5d8a3a','#46702a','#6b9440'].map(c=>new THREE.Color(c));
   pts.forEach((p,i)=>{const s=0.7+R()*0.9;tmp.position.set(p[0],0,p[1]);tmp.rotation.set((R()-0.5)*0.3,R()*3,(R()-0.5)*0.3);tmp.scale.set(s,s*(0.8+R()*0.8),s);tmp.updateMatrix();im.setMatrixAt(i,tmp.matrix);im.setColorAt(i,gc[i%gc.length]);});
   im.frustumCulled=false;group(scene,'หญ้า','',true).add(im);
+}
+
+/* ---------- look: sky light, tone mapping, colour space, natural ground, soft contact shadows ---------- */
+{
+  // tileable value noise, for ground that varies like real soil and grass
+  function vnoise(size,oct,seed){const r=rng(seed),out=new Float32Array(size*size);let amp=1,tot=0;
+    for(let o=0;o<oct;o++){const n=4<<o,grid=new Float32Array(n*n);for(let i=0;i<n*n;i++)grid[i]=r();
+      for(let y=0;y<size;y++){const gy=y/size*n,y0=gy|0,ty=gy-y0,sy=ty*ty*(3-2*ty),y1=(y0+1)%n;
+        for(let x=0;x<size;x++){const gx=x/size*n,x0=gx|0,tx=gx-x0,sx=tx*tx*(3-2*tx),x1=(x0+1)%n;
+          out[y*size+x]+=amp*((grid[y0*n+x0]*(1-sx)+grid[y0*n+x1]*sx)*(1-sy)+(grid[y1*n+x0]*(1-sx)+grid[y1*n+x1]*sx)*sy);}}
+      tot+=amp;amp*=0.55;}
+    for(let i=0;i<out.length;i++)out[i]/=tot;return out;}
+  function noiseTex(size,oct,seed,fn,rep){const c=document.createElement('canvas');c.width=c.height=size;const g=c.getContext('2d'),img=g.createImageData(size,size),n=vnoise(size,oct,seed),r=rng(seed+7);
+    for(let i=0;i<n.length;i++){const col=fn(n[i],r());img.data[i*4]=col[0];img.data[i*4+1]=col[1];img.data[i*4+2]=col[2];img.data[i*4+3]=255;}
+    g.putImageData(img,0,0);const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rep[0],rep[1]);t.anisotropy=ANI;return t;}
+  const mix=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+  const ss=(e0,e1,x)=>{const t=Math.max(0,Math.min(1,(x-e0)/(e1-e0)));return t*t*(3-2*t);};
+  const dirtT=noiseTex(512,6,11,(n,r)=>r<0.012?[196,188,170]:r>0.996?[228,224,214]:mix([104,84,62],[176,150,116],ss(0.3,0.72,n)),[3,2]);
+  const grassFn=(n,r)=>r<0.09?[58,86,36]:r>0.975?[156,172,96]:mix([68,100,42],[132,160,74],ss(0.28,0.72,n));
+  const grassT=noiseTex(512,6,23,grassFn,[14,14]),grassInT=noiseTex(256,5,29,grassFn,[3,1]);
+  const concT=noiseTex(256,5,31,(n,r)=>r<0.03?[150,146,138]:mix([164,160,150],[196,192,184],ss(0.3,0.7,n)),[1,1]);
+  MAT.dirt.map=dirtT;MAT.dirt.bumpMap=dirtT;MAT.dirt.bumpScale=0.03;
+  MAT.grass.map=grassT;MAT.grass.bumpMap=grassT;MAT.grass.bumpScale=0.03;
+  MAT.grassIn.map=grassInT;MAT.paver.map=concT;MAT.paver.color.set(0xffffff);MAT.paver.bumpMap=concT;MAT.paver.bumpScale=0.02;
+  MAT.wall.bumpMap=MAT.wall.map;MAT.wall.bumpScale=0.01;
+  // surfaces that catch the sky: shiny plastic troughs, galvanised steel, tin, water
+  MAT.feed.roughness=0.32;MAT.water.roughness=0.3;MAT.waterCap.roughness=0.3;
+  MAT.waterIn.roughness=0.05;MAT.waterIn.metalness=0.1;MAT.waterIn.opacity=0.8;
+  MAT.metal.metalness=0.6;MAT.metal.roughness=0.42;MAT.rust.metalness=0.45;MAT.rust.roughness=0.65;
+  MAT.pipe.metalness=0.85;MAT.pipe.roughness=0.3;MW.water.roughness=0.05;
+  // soft dark patches under things that stand on the ground, so nothing looks pasted on
+  const aoTex=(function(){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');const gr=g.createRadialGradient(64,64,6,64,64,64);gr.addColorStop(0,'rgba(0,0,0,0.6)');gr.addColorStop(0.6,'rgba(0,0,0,0.25)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,128,128);return new THREE.CanvasTexture(c);})();
+  const aoMat=new THREE.MeshBasicMaterial({map:aoTex,transparent:true,depthWrite:false,color:0xffffff});
+  function aoBlob(w,d,x,z,o){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),o==null?aoMat:aoMat.clone());if(o!=null)m.material.opacity=o;m.rotation.x=-Math.PI/2;m.position.set(x,0.012,z);m.renderOrder=1;m.raycast=function(){};scene.add(m);}
+  aoBlob(1.6,L1+0.7,XC,Z1+L1/2);aoBlob(L2+0.6,1.4,X2+L2/2,Z2+0.45);aoBlob(0.9,0.9,BX,BZ,0.8);
+  aoBlob(1.1,1.4,XL+0.45,1.5+DZ,0.7);aoBlob(0.5,0.5,TX,TZ,0.6);
+  treesG.children.forEach(t=>aoBlob(2.6,2.6,t.position.x,t.position.z,0.55));
+  // colour space: author colours in sRGB, light in linear, show through a filmic curve
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=0.55;
+  const seenM=new Set(),seenT=new Set();
+  const lin=c=>c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4);
+  scene.traverse(o=>{
+    const ms=Array.isArray(o.material)?o.material:(o.material?[o.material]:[]);
+    ms.forEach(m=>{if(seenM.has(m))return;seenM.add(m);if(m.color)m.color.convertSRGBToLinear();if(m.isMeshStandardMaterial)m.envMapIntensity=0.6;
+      const t=m.map;if(t&&!seenT.has(t)){seenT.add(t);t.encoding=THREE.sRGBEncoding;t.needsUpdate=true;}m.needsUpdate=true;});
+    if(o.isInstancedMesh&&o.instanceColor){const a=o.instanceColor.array;for(let i=0;i<a.length;i++)a[i]=lin(a[i]);o.instanceColor.needsUpdate=true;}
+  });
+  scene.fog.color.convertSRGBToLinear();
+  // a physical sky lights the scene (reflections on tin, plastic, water)
+  sun.position.set(5.5,7,3.5);sun.intensity=2.0;sun.color.set(0xffe6c4);
+  scene.traverse(o=>{if(o.isHemisphereLight)o.intensity=0.25;if(o.isAmbientLight)o.intensity=0.04;});
+  if(THREE.Sky){
+    const mkSky=s=>{const k=new THREE.Sky();k.scale.setScalar(s);const u=k.material.uniforms;u.turbidity.value=3;u.rayleigh.value=2.2;u.mieCoefficient.value=0.003;u.mieDirectionalG.value=0.8;u.sunPosition.value.copy(sun.position).normalize();return k;};
+    const pm=new THREE.PMREMGenerator(renderer),skyScene=new THREE.Scene();skyScene.add(mkSky(50));
+    scene.environment=pm.fromScene(skyScene).texture;pm.dispose();
+  }
+  // the visible sky is painted: deeper blue overhead, hazy at the horizon (the shader sky looks washed out here)
+  {const c=document.createElement('canvas');c.width=2;c.height=256;const g=c.getContext('2d');const gr=g.createLinearGradient(0,0,0,256);
+   gr.addColorStop(0,'#3d7cc4');gr.addColorStop(0.45,'#7fb3dd');gr.addColorStop(0.62,'#cfe2ec');gr.addColorStop(1,'#e2ece8');g.fillStyle=gr;g.fillRect(0,0,2,256);
+   const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;scene.background=t;}
 }
 
 /* ---------- UI ---------- */
@@ -734,7 +804,7 @@ modeBtns.forEach(b=>b.addEventListener('click',()=>{
 }));
 
 /* "ดูน้ำไหล": water fills the pipes from the tap to every trough while the camera follows it */
-const coreMat=new THREE.PointsMaterial({size:0.03,color:0x2f8fd8,map:dotMat.map,transparent:true,depthWrite:false});
+const coreMat=new THREE.PointsMaterial({size:0.03,color:0x2f8fd8,map:dotMat.map,transparent:true,depthWrite:false});coreMat.color.convertSRGBToLinear();
 function addCore(f){const pts=[];for(let d=0;d<=f.tot;d+=0.025){let k=0,dd=d;while(k<f.seg.length-1&&dd>f.seg[k]){dd-=f.seg[k];k++;}vv.lerpVectors(f.P[k],f.P[k+1],f.seg[k]>1e-6?Math.min(1,dd/f.seg[k]):0);pts.push(vv.x,vv.y,vv.z);}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));const p=new THREE.Points(g,coreMat);p.frustumCulled=false;p.raycast=function(){};p.visible=false;f.p.parent.add(p);f.core=p;f.coreN=pts.length/3;}
 ['drill','easy'].forEach(m=>{FLOWS[m].out.forEach(addCore);addCore(FLOWS[m].inn);});
 const troughWater=[];scene.traverse(o=>{if(o.material===MAT.waterIn)troughWater.push(o);});
