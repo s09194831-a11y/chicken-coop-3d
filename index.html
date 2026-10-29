@@ -1,0 +1,670 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="โมเดล 3 มิติของเล้าไก่ไข่ กรง 6 ตับ พร้อมระบบเติมน้ำอัตโนมัติแบบลูกลอย"><meta name="theme-color" content="#d6e3e8"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style></head><body><title>เล้าไก่ไข่ 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500&family=Mitr:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed 3D stage; title card pinned top-left; tap-info card and tool tray stacked at the bottom. */
+:root{
+  --bg:#d6e3e8;
+  --panel:rgba(247,249,248,.9);
+  --panel-solid:#f7f9f8;
+  --ink:#1c282d;
+  --muted:#56676d;
+  --line:rgba(28,40,45,.16);
+  --feed:#f2bd05;
+  --feed-ink:#2b2200;
+  --water:#1f80c8;
+  --font-display:"Mitr","Leelawadee UI","Noto Sans Thai",Tahoma,sans-serif;
+  --font-body:"IBM Plex Sans Thai","Leelawadee UI","Noto Sans Thai",Tahoma,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1619;--panel:rgba(20,28,32,.88);--panel-solid:#141c20;--ink:#e6eef0;--muted:#9badb3;--line:rgba(230,238,240,.16);--water:#5aaee9;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1619;--panel:rgba(20,28,32,.88);--panel-solid:#141c20;--ink:#e6eef0;--muted:#9badb3;--line:rgba(230,238,240,.16);--water:#5aaee9;color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);overflow:hidden;-webkit-tap-highlight-color:transparent}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+.fail{position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:24px;text-align:center;font-size:16px;color:var(--ink)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.head{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:max(16px,calc(env(safe-area-inset-left,0px) + 12px));max-width:min(340px,calc(100% - 32px));padding:12px 14px;display:grid;gap:4px}
+.head h1{margin:0;font-family:var(--font-display);font-weight:500;font-size:22px;line-height:1.2;text-wrap:balance}
+.stat{margin:0;font-size:14px;font-variant-numeric:tabular-nums}
+.key{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--muted)}
+.key li{display:flex;align-items:center;gap:6px}
+.sw{width:18px;height:8px;border-radius:2px;display:inline-block}
+.sw.feed{background:var(--feed)}
+.sw.water{background:var(--water)}
+.note{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.wstate{margin:2px 0 0;font-size:13px;display:flex;align-items:center;gap:6px}
+.wstate::before{content:"";flex:none;width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.wstate.open::before{background:var(--water)}
+.bottom{position:fixed;left:0;right:0;bottom:0;padding-top:0;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 12px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+.bottom>*{pointer-events:auto}
+.info{width:min(560px,100%);padding:10px 12px 10px 14px;display:flex;gap:10px;align-items:flex-start}
+.info-text{flex:1;min-width:0}
+.info h2{margin:0;font-family:var(--font-display);font-weight:500;font-size:17px;line-height:1.3}
+.info p{margin:2px 0 0;font-size:14px;color:var(--muted);line-height:1.5}
+.x{flex:none;width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:18px;line-height:1;cursor:pointer}
+.tray{max-width:100%;padding:8px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.grp{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;max-width:100%}
+.grp::-webkit-scrollbar{display:none}
+.sep{width:1px;background:var(--line);align-self:stretch}
+.tray button{flex:none;font-family:var(--font-display);font-size:15px;font-weight:400;min-height:40px;padding:6px 14px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;white-space:nowrap}
+.tray button:hover{background:var(--line)}
+.tray button:focus-visible,.x:focus-visible{outline:2px solid var(--water);outline-offset:2px}
+.tray button.on{background:var(--ink);color:var(--panel-solid);border-color:var(--ink)}
+.tray button[aria-pressed]{padding-left:12px}
+.tray button[aria-pressed]::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;border:1.5px solid currentColor;margin-right:8px;vertical-align:-1px}
+.tray button[aria-pressed="true"]{background:var(--feed);color:var(--feed-ink);border-color:var(--feed)}
+.tray button[aria-pressed="true"]::before{background:currentColor}
+@media (max-width:640px){
+  .head{padding:10px 12px}
+  .head h1{font-size:19px}
+  .tray{flex-direction:column;flex-wrap:nowrap;align-items:stretch;width:100%}
+  .sep{display:none}
+  .tray button{font-size:14px;min-height:38px;padding:5px 12px}
+}
+@media (max-height:560px){.head .key,.head .note{display:none}.head h1{font-size:17px}}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+</style>
+
+<div id="stage" role="img" aria-label="โมเดล 3 มิติของเล้าไก่ไข่แบบกรงตับ มีกรง 6 ตับ รางอาหารสีเหลือง รางน้ำสีฟ้า หลังคาสังกะสี และสแลนกันแดด"></div>
+
+<header class="head panel">
+  <h1>เล้าไก่ไข่ 3D</h1>
+  <p class="stat" id="stat">กรง 6 ตับ</p>
+  <ul class="key">
+    <li><i class="sw feed"></i>รางอาหาร</li>
+    <li><i class="sw water"></i>รางน้ำ</li>
+  </ul>
+  <p class="wstate" id="wstate" aria-live="off">น้ำเต็ม ลูกลอยยกขึ้น วาล์วปิด</p>
+  <p class="note">ผังตามรูปที่วาดมา (29 ต.ค. 69) ขนาดยังกะเอา ยังไม่ได้วัดจริง</p>
+</header>
+
+<div class="bottom">
+  <section class="info panel" aria-live="polite">
+    <div class="info-text">
+      <h2 id="infoName">ระบบเติมน้ำอัตโนมัติ</h2>
+      <p id="infoText">ใช้ลูกลอยตัวเดียว: ก๊อก → สายยางยาว → สายน้ำดี → ลูกลอยในถังพัก → รางน้ำ 5 ราง + ท่อนิปเปิ้ลชั้นล่าง · แตะชิ้นไหนก็ได้เพื่อดูชื่อ · ลากเพื่อหมุน</p>
+    </div>
+    <button id="infoClose" class="x" type="button" aria-label="ปิด">×</button>
+  </section>
+  <nav class="tray panel" aria-label="มุมมองและตัวเลือก">
+    <div class="grp" role="group" aria-label="มุมมอง">
+      <button id="vWater" type="button" data-view="water" class="on">ดูระบบน้ำ</button>
+      <button id="vNipple" type="button" data-view="nipple">ดูนิปเปิ้ล</button>
+      <button id="vOverview" type="button" data-view="overview">ภาพรวม</button>
+      <button id="vAisle" type="button" data-view="aisle">ทางเดินในเล้า</button>
+      <button id="vHens" type="button" data-view="hens">ใกล้ ๆ ไก่</button>
+      <button id="vPath" type="button" data-view="path">ทางเดินด้านนอก</button>
+      <button id="vTop" type="button" data-view="top">มองจากบน</button>
+    </div>
+    <span class="sep" aria-hidden="true"></span>
+    <div class="grp" role="group" aria-label="แสดงหรือซ่อน">
+      <button id="tRoof" type="button" aria-pressed="true">หลังคา</button>
+      <button id="tHens" type="button" aria-pressed="true">ไก่</button>
+      <button id="tWater" type="button" aria-pressed="true">ระบบน้ำ</button>
+      <button id="tSpin" type="button" aria-pressed="false">หมุนเอง</button>
+    </div>
+  </nav>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+'use strict';
+const stageEl=document.getElementById('stage');
+function fail(msg){const p=document.createElement('p');p.className='fail';p.textContent=msg;stageEl.appendChild(p);}
+if(!window.THREE||!THREE.OrbitControls){fail('โหลดตัววาดภาพ 3 มิติไม่ได้ ต่ออินเทอร์เน็ตแล้วเปิดหน้านี้ใหม่');return;}
+let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:true});}catch(e){fail('เบราว์เซอร์นี้แสดงภาพ 3 มิติไม่ได้ ลองเปิดด้วย Chrome');return;}
+
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SMALL=Math.min(innerWidth,innerHeight)<600;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+stageEl.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(50,1,0.03,120);
+camera.position.set(4.6,4.2,6.2);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.target.set(0.1,0.8,0.1);
+controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.maxPolarAngle=Math.PI*0.49;controls.minDistance=0.4;controls.maxDistance=26;
+controls.autoRotateSpeed=0.8;
+controls.update();
+
+/* ---------- sky, light ---------- */
+scene.background=(function(){const c=document.createElement('canvas');c.width=2;c.height=256;const g=c.getContext('2d');const gr=g.createLinearGradient(0,0,0,256);gr.addColorStop(0,'#8fbcd8');gr.addColorStop(0.55,'#cfe2ea');gr.addColorStop(1,'#e6ece2');g.fillStyle=gr;g.fillRect(0,0,2,256);return new THREE.CanvasTexture(c);})();
+scene.fog=new THREE.Fog(0xd6e5ea,22,50);
+scene.add(new THREE.HemisphereLight(0xe2f0ff,0x8a7a5a,0.8));
+scene.add(new THREE.AmbientLight(0xffffff,0.18));
+const sun=new THREE.DirectionalLight(0xfff2dc,0.9);
+sun.position.set(6,10,5);sun.castShadow=true;
+sun.shadow.mapSize.set(SMALL?1024:2048,SMALL?1024:2048);
+Object.assign(sun.shadow.camera,{left:-8,right:8,top:8,bottom:-8,near:1,far:30});
+sun.shadow.bias=-0.0006;sun.shadow.normalBias=0.02;
+scene.add(sun);
+
+/* ---------- helpers ---------- */
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const R=rng(29102026);
+const ANI=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+function ctex(size,draw,rx,ry){const c=document.createElement('canvas');c.width=c.height=size;const g=c.getContext('2d');draw(g,size,rng(size*13+(rx||1)*31));const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rx||1,ry||rx||1);t.anisotropy=ANI;return t;}
+function speckle(g,s,r,base,cols,n,r0,r1){g.fillStyle=base;g.fillRect(0,0,s,s);for(let i=0;i<n;i++){g.fillStyle=cols[(r()*cols.length)|0];g.globalAlpha=0.35+r()*0.6;g.beginPath();g.arc(r()*s,r()*s,r0+r()*(r1-r0),0,6.283);g.fill();}g.globalAlpha=1;}
+function metalDraw(rust){return function(g,s,r){g.fillStyle='#a3aaac';g.fillRect(0,0,s,s);for(let i=0;i<120;i++){g.fillStyle=r()<0.5?'#949b9e':'#b5bbbd';g.globalAlpha=0.4;g.fillRect(r()*s,0,1+r()*3,s);}g.globalAlpha=1;for(let i=0;i<rust;i++){const x=r()*s,y=r()*s,rad=6+r()*34;const gr=g.createRadialGradient(x,y,0,x,y,rad);gr.addColorStop(0,'rgba(138,80,44,.75)');gr.addColorStop(1,'rgba(138,80,44,0)');g.fillStyle=gr;g.fillRect(x-rad,y-rad,rad*2,rad*2);}for(let i=0;i<rust*2;i++){g.fillStyle='rgba(118,70,40,.22)';g.fillRect(r()*s,r()*s,2,20+r()*60);}};}
+const T={
+  grass:ctex(256,(g,s,r)=>speckle(g,s,r,'#6a8f47',['#5a8238','#7fa556','#93b366','#4d7631'],5000,0.8,2.6),18),
+  grassIn:ctex(256,(g,s,r)=>speckle(g,s,r,'#7c9a52',['#6a8a40','#93ad62','#a08a62','#5f7d38'],5000,0.8,2.6),4,1),
+  dirt:ctex(256,(g,s,r)=>speckle(g,s,r,'#9c8466',['#8a7356','#ad9576','#7b6850','#b7a081'],4500,0.8,3),3,2),
+  manure:ctex(256,(g,s,r)=>{speckle(g,s,r,'#6d5a43',['#5a4834','#806d53','#4e3f2e'],3500,1,3.5);for(let i=0;i<500;i++){g.fillStyle=r()<0.5?'#e4ded0':'#cfc6b2';g.globalAlpha=0.8;g.beginPath();g.arc(r()*s,r()*s,0.8+r()*1.8,0,6.283);g.fill();}g.globalAlpha=1;},4,1),
+  feed:ctex(128,(g,s,r)=>speckle(g,s,r,'#b88a4b',['#a0743a','#cf9f5c','#8d6430','#d8b070'],1800,0.8,2),6,1),
+  wall:ctex(512,(g,s,r)=>{g.fillStyle='#ebe9e2';g.fillRect(0,0,s,s);for(let i=0;i<1500;i++){g.fillStyle=r()<0.5?'#dfdcd3':'#f3f2ee';g.globalAlpha=0.5;g.fillRect(r()*s,r()*s,2+r()*6,2+r()*6);}g.globalAlpha=1;const gr=g.createLinearGradient(0,s,0,s*0.74);gr.addColorStop(0,'rgba(120,96,70,.5)');gr.addColorStop(1,'rgba(120,96,70,0)');g.fillStyle=gr;g.fillRect(0,s*0.74,s,s*0.26);},1),
+  metal:ctex(256,metalDraw(5),1),
+  rust:ctex(256,metalDraw(22),1),
+  wood:ctex(128,(g,s,r)=>{g.fillStyle='#8b6d4d';g.fillRect(0,0,s,s);for(let i=0;i<60;i++){g.strokeStyle=r()<0.5?'#7a5d40':'#9c7e5c';g.globalAlpha=0.6;g.lineWidth=1+r()*2;g.beginPath();const x=r()*s;g.moveTo(x,0);g.bezierCurveTo(x+r()*8-4,s*0.3,x+r()*8-4,s*0.7,x+r()*6-3,s);g.stroke();}g.globalAlpha=1;},1),
+  sack:ctex(64,(g,s)=>{g.fillStyle='#e2be2c';g.fillRect(0,0,s,s);g.globalAlpha=0.25;g.fillStyle='#b8961c';for(let i=0;i<s;i+=4){g.fillRect(i,0,1,s);g.fillRect(0,i,s,1);}g.globalAlpha=1;},3),
+};
+const std=o=>new THREE.MeshStandardMaterial(Object.assign({roughness:0.85,metalness:0},o));
+const DS=THREE.DoubleSide;
+const MAT={
+  grass:std({map:T.grass}),grassIn:std({map:T.grassIn}),dirt:std({map:T.dirt}),manure:std({map:T.manure,roughness:1}),
+  wall:std({map:T.wall,roughness:0.95}),
+  metal:std({map:T.metal,metalness:0.35,roughness:0.6,side:DS}),rust:std({map:T.rust,metalness:0.3,roughness:0.7,side:DS}),
+  clear:std({color:0xf4f8f6,transparent:true,opacity:0.5,roughness:0.3,side:DS,depthWrite:false}),
+  wood:std({map:T.wood}),woodOld:std({map:T.wood,color:0xbdb5a8}),
+  pipe:std({color:0xb3bbbf,metalness:0.55,roughness:0.4}),
+  feed:std({color:0xf2c200,roughness:0.5,side:DS}),feedIn:std({map:T.feed,roughness:1}),
+  water:std({color:0x2b8fd8,roughness:0.4,side:DS}),waterCap:std({color:0x1f73b3,roughness:0.4,side:DS}),
+  waterIn:std({color:0x9fd0ea,transparent:true,opacity:0.7,roughness:0.1}),
+  clip:std({color:0xff6b3d,roughness:0.5}),
+  cup:std({color:0xeef6ff,transparent:true,opacity:0.45,roughness:0.2,side:DS,depthWrite:false}),
+  bucket:std({color:0xf1f1ee,roughness:0.6}),lid:std({color:0xe4e8ec,roughness:0.6}),band:std({color:0xe58aa6,roughness:0.6}),
+  sack:std({map:T.sack}),sackW:std({color:0xe8e5dc,roughness:0.95}),
+  paver:std({color:0xb5b0a4,roughness:0.95}),
+  tarp:std({color:0x3d4a40,roughness:0.9,side:DS}),
+  net:std({color:0x15191a,transparent:true,opacity:0.6,roughness:1,side:DS,depthWrite:false}),
+  leaf:std({color:0x4f7d3a,flatShading:true}),leaf2:std({color:0x6a9a45,flatShading:true}),trunk:std({color:0x6b5440}),
+  tile:std({color:0x4e2b22,roughness:0.95}),
+};
+const LINE={wire:new THREE.LineBasicMaterial({color:0xaeb7bb}),fence:new THREE.LineBasicMaterial({color:0x6e9a78,transparent:true,opacity:0.5})};
+
+function group(parent,label,info,noBox){const g=new THREE.Group();if(label){g.userData.label=label;g.userData.info=info||'';if(noBox)g.userData.noBox=true;}(parent||scene).add(g);return g;}
+function mesh(geo,mat,parent,x,y,z,opt){const m=new THREE.Mesh(geo,mat);m.position.set(x||0,y||0,z||0);m.castShadow=!(opt&&opt.noCast);m.receiveShadow=true;if(opt&&opt.rot)m.rotation.set(opt.rot[0],opt.rot[1],opt.rot[2]);(parent||scene).add(m);return m;}
+function boxM(w,h,d,mat,parent,x,y,z,opt){return mesh(new THREE.BoxGeometry(w,h,d),mat,parent,x,y,z,opt);}
+const UP=new THREE.Vector3(0,1,0);
+function rod(a,b,r,mat,parent){const A=new THREE.Vector3(a[0],a[1],a[2]),B=new THREE.Vector3(b[0],b[1],b[2]);const d=B.clone().sub(A);const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length(),8),mat);m.position.copy(A).add(B).multiplyScalar(0.5);m.quaternion.setFromUnitVectors(UP,d.normalize());m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
+function lineGeo(v){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));return g;}
+function flat(w,d,mat,parent,x,y,z,opt){return mesh(new THREE.PlaneGeometry(w,d),mat,parent,x,y,z,Object.assign({rot:[-Math.PI/2,0,0],noCast:true},opt||{}));}
+function corrugated(w,h,seg){const g=new THREE.PlaneGeometry(w,h,seg,1);const p=g.attributes.position;for(let i=0;i<p.count;i++)p.setZ(i,Math.sin(p.getX(i)/0.076*Math.PI*2)*0.009);g.computeVertexNormals();return g;}
+function shapeOf(pts){const s=new THREE.Shape();pts.forEach((p,i)=>i?s.lineTo(p[0],p[1]):s.moveTo(p[0],p[1]));return s;}
+// profile drawn in (z,y); extruded along +x from 0 to L
+function extrudeX(pts,L){const geo=new THREE.ExtrudeGeometry(shapeOf(pts),{depth:L,bevelEnabled:false});geo.rotateY(-Math.PI/2);geo.translate(L,0,0);return geo;}
+function capX(pts,x){const geo=new THREE.ShapeGeometry(shapeOf(pts));geo.rotateY(-Math.PI/2);geo.translate(x,0,0);return geo;}
+
+/* ---------- layout (from the owner's sketch and answers, 29 Oct) ----------
+   White wall at the back (-z). From the wall runs a back-to-back pair of single-tier rows,
+   2 units long: the left side faces left, the right side faces right. Right after its front
+   end lies a stepped two-tier row, 1 unit per tier, facing the front path (+z).
+   The pair sits as high as the front row's upper step. Each unit has its own water
+   trough; they are not joined. 6 units in all. */
+const D=0.42,CELL=0.35,UNIT=1.4,H=0.42,FB=0.07,TR=0.2;
+const ZW=-2.0,XL=-1.45,XR=1.75,ZF=1.95,ZFENCE=2.8;   // white wall, side edges, roof front, front fence
+const XC=0.15;                                       // spine of the back-to-back pair
+const L1=UNIT*2,L2=UNIT;
+const Z1=ZW+0.1,Z2=Z1+L1+0.05;                       // pair start, front row back edge
+const X2=XC-L2/2;                                    // front row centred on the pair
+const HEN_TOTAL=35;
+
+/* ---------- ground ---------- */
+flat(60,60,MAT.grass,group(scene,'หญ้ารอบเล้า','พื้นหญ้านอกรั้ว',true),0,0,0);
+flat(XR-XL,ZF-ZW,MAT.dirt,group(scene,'พื้นดินในเล้า','พื้นดินใต้หลังคา',true),(XL+XR)/2,0.004,(ZW+ZF)/2);
+flat(XR-XL,ZFENCE-ZF,MAT.grassIn,group(scene,'หญ้าข้างทางเดิน','',true),(XL+XR)/2,0.004,(ZF+ZFENCE)/2);
+const manureG=group(scene,'ขี้ไก่ใต้กรง','ขี้ไก่หล่นลงจากพื้นกรงที่เป็นลวด ลงมากองบนพื้นดินข้างล่าง');
+flat(0.9,L1,MAT.manure,manureG,XC,0.008,Z1+L1/2);
+flat(L2,0.8,MAT.manure,manureG,X2+L2/2,0.008,Z2+0.4);
+const paverG=group(scene,'ทางเดินแผ่นปูน','แผ่นปูนวางเป็นทางเดินหน้ากรงข้างหน้า ใช้เดินเติมอาหารและเก็บไข่');
+for(let x=XL+0.3;x<XR-0.2;x+=0.46)boxM(0.4,0.04,0.4,MAT.paver,paverG,x+(R()-0.5)*0.03,0.02,2.3+(R()-0.5)*0.04,{rot:[0,(R()-0.5)*0.08,0]});
+boxM(0.8,0.04,1.1,MAT.paver,group(scene,'ลานปูน','มุมเก็บถังและกระสอบอาหาร'),XL+0.45,0.02,1.4);
+
+/* ---------- walls ---------- */
+const houseG=group(scene,'ผนังปูนสีขาว','หัวแถวกรงยาวชนผนังนี้ (ด้านหลังผนังเดาว่าเป็นตัวบ้าน)');
+mesh(new THREE.BoxGeometry(XR-XL+1.2,3.1,5.2),MAT.wall,houseG,(XL+XR)/2,1.55,ZW-2.6);
+{const rg=new THREE.ExtrudeGeometry(shapeOf([[-2.95,0],[2.95,0],[0,1.25]]),{depth:XR-XL+1.6,bevelEnabled:false});rg.rotateY(-Math.PI/2);rg.translate((XL+XR)/2+(XR-XL+1.6)/2,3.1,ZW-2.6);mesh(rg,MAT.tile,houseG);}
+const sideG=group(scene,'ผนังสังกะสี','กั้นลมและแดดด้านข้าง ตรงมุมนี้วางถังและกระสอบอาหาร');
+{const g=corrugated(0.84,2.1,44);g.rotateY(Math.PI/2);for(let i=0;i<5;i++)mesh(g,i%2?MAT.rust:MAT.metal,sideG,XL,1.05,ZW+0.42+i*0.8);}
+
+/* ---------- cages ---------- */
+const fy=z=>z<=D?FB*(1-z/D):-(z-D)*0.2;
+function tierGeo(L){
+  const v=[],S=(a,b,c,d,e,f)=>v.push(a,b,c,d,e,f);
+  const ty=fy(D+TR);
+  for(let i=0;i<=12;i++){const z=Math.min(i*0.05,D+TR),y=fy(z);S(0,y,z,L,y,z);}
+  S(0,ty,D+TR,L,ty,D+TR);S(0,ty+0.035,D+TR,L,ty+0.035,D+TR);
+  const n5=Math.round(L/0.05);
+  for(let i=0;i<=n5;i++){const x=i*0.05;S(x,FB,0,x,0,D);S(x,0,D,x,ty,D+TR);if(i%2===0)S(x,ty,D+TR,x,ty+0.035,D+TR);S(x,0.06,D,x,H,D);}
+  [0.06,0.24,H].forEach(y=>S(0,y,D,L,y,D));
+  const n10=Math.round(L/0.1);
+  for(let i=0;i<=n10;i++){const x=i*0.1;S(x,FB,0,x,H,0);S(x,H,0,x,H,D);}
+  [FB,0.17,0.27,0.37,H].forEach(y=>S(0,y,0,L,y,0));
+  for(let i=0;i<=4;i++){const z=i*D/4;S(0,H,z,L,H,z);}
+  const nc=Math.round(L/CELL);
+  for(let c=0;c<=nc;c++){const x=c*CELL;for(let i=0;i<=5;i++){const z=i*D/5;S(x,fy(z),z,x,H,z);}[0.15,0.3].forEach(y=>S(x,y,0,x,y,D));}
+  return lineGeo(v);
+}
+const FEED_O=[[0,0.13],[0.03,0],[0.11,0],[0.16,0.09]];
+const FEED_I=[[0.153,0.09],[0.106,0.006],[0.034,0.006],[0.007,0.13]];
+const WATER_O=[[0,0.055],[0,0],[0.06,0],[0.06,0.055]];
+const WATER_I=[[0.054,0.055],[0.054,0.006],[0.006,0.006],[0.006,0.055]];
+const cupGeo=new THREE.CylinderGeometry(0.03,0.024,0.05,14,1,true);
+function feedTrough(L){
+  const g=group(null,'รางอาหาร (สีเหลือง)','ไก่ยื่นหัวลอดซี่กรงออกมากิน ในรางมีถ้วยพลาสติกใสวางไว้เป็นระยะ');
+  mesh(extrudeX(FEED_O.concat(FEED_I),L),MAT.feed,g);
+  mesh(capX(FEED_O,0.002),MAT.feed,g);mesh(capX(FEED_O,L-0.002),MAT.feed,g);
+  flat(L-0.02,0.112,MAT.feedIn,g,L/2,0.05,0.078);
+  for(let x=0.35;x<L-0.1;x+=0.9)mesh(cupGeo,MAT.cup,g,x+(R()-0.5)*0.15,0.06,0.08,{noCast:true});
+  return g;
+}
+function waterTrough(L,funnelAt){
+  const g=group(null,'รางน้ำ (สีฟ้า)','รางแยกกันตับละราง ไม่ได้ต่อกันยาว ไก่ยื่นหัวขึ้นมากินน้ำ');
+  mesh(extrudeX(WATER_O.concat(WATER_I),L),MAT.water,g);
+  boxM(0.014,0.062,0.07,MAT.waterCap,g,-0.004,0.031,0.03);boxM(0.014,0.062,0.07,MAT.waterCap,g,L+0.004,0.031,0.03);
+  flat(L,0.048,MAT.waterIn,g,L/2,0.035,0.03);
+  for(let x=0.25;x<L;x+=0.5){
+    const c=group(g,'คลิปยึดรางน้ำ','ตัวหนีบสีส้ม ยึดรางน้ำไว้กับหน้ากรง');
+    boxM(0.016,0.09,0.012,MAT.clip,c,x,0.02,-0.008);boxM(0.016,0.012,0.05,MAT.clip,c,x,0.068,0.017);
+  }
+  if(funnelAt!=null){
+    const f=group(g,'กรวยปลายรางน้ำ','กรวยสีฟ้าที่ปลายรางฝั่งผนังขาว');
+    const x=funnelAt===0?0.05:L-0.05;
+    mesh(new THREE.CylinderGeometry(0.06,0.05,0.07,18,1,true),MAT.water,f,x,0.1,0.03);
+    mesh(new THREE.CylinderGeometry(0.05,0.02,0.05,18,1,true),MAT.water,f,x,0.04,0.03);
+  }
+  return g;
+}
+const tiers=[];
+function buildTier(parent,L,name,x,y,z,funnelAt,rotY){
+  const g=new THREE.Group();g.position.set(x,y,z);g.rotation.y=rotY||0;parent.add(g);
+  const n=Math.round(L/CELL);
+  const lines=new THREE.LineSegments(tierGeo(L),LINE.wire);
+  lines.userData.label=name;
+  lines.userData.info='กรงลวด '+Math.round(L/UNIT)+' ตับ ยาวประมาณ '+L.toFixed(1)+' ม. แบ่ง '+n+' ช่อง พื้นกรงลาดลงด้านหน้า ไข่จะกลิ้งออกมาที่ที่รับไข่หน้ากรง';
+  g.add(lines);
+  const ft=feedTrough(L);ft.position.set(0,0.05,D+0.015);g.add(ft);
+  const nu=Math.max(1,Math.round(L/UNIT)),ul=L/nu;   // a separate water trough for each unit
+  for(let u=0;u<nu;u++){
+    const fa=funnelAt==null?null:(funnelAt===0?(u===0?0:null):(u===nu-1?1:null));
+    const wt=waterTrough(ul-0.03,fa);wt.position.set(u*ul+0.015,0.43,D-0.012);g.add(wt);
+  }
+  tiers.push({obj:g,L:L,n:n});
+  return g;
+}
+// one stepped two-tier row in its own frame: x along the row, +z toward the feeding side
+function stepRow(parent,L,name,funnelAt){
+  buildTier(parent,L,name+' ชั้นบน',0,1.05,0.02,funnelAt);
+  buildTier(parent,L,name+' ชั้นล่าง',0,0.55,0.30,funnelAt);
+  const legs=group(parent,'ขาตั้ง'+name,'โครงท่อเหล็กยกกรงสูงจากพื้น ชั้นบนอยู่ถอยหลังเป็นขั้นบันได ขี้ไก่หล่นลงพื้นดินข้างล่าง');const r=0.014;
+  for(let x=0;x<=L+1e-6;x+=UNIT){
+    rod([x,0,0.03],[x,1.54,0.03],r,MAT.pipe,legs);rod([x,0,0.44],[x,1.05,0.44],r,MAT.pipe,legs);
+    rod([x,0,0.72],[x,0.55,0.72],r,MAT.pipe,legs);rod([x,0,0.30],[x,0.62,0.30],r,MAT.pipe,legs);
+    rod([x,0.15,0.03],[x,0.15,0.72],r,MAT.pipe,legs);rod([x,1.05,0.44],[x,1.12,0.03],r,MAT.pipe,legs);
+  }
+  rod([0,0.545,0.72],[L,0.545,0.72],r,MAT.pipe,legs);rod([0,1.045,0.44],[L,1.045,0.44],r,MAT.pipe,legs);
+  rod([0,1.54,0.03],[L,1.54,0.03],r,MAT.pipe,legs);rod([0,0.15,0.03],[L,0.15,0.03],r,MAT.pipe,legs);
+}
+// back-to-back pair: local x runs from the wall to the front, local +z is the left side
+const row1=group(scene);row1.position.set(XC,0,Z1);row1.rotation.y=-Math.PI/2;
+const YP=1.05;                                       // pair floor = the front row's upper step
+buildTier(row1,L1,'แถวยาว ฝั่งซ้าย',0,YP,0.01,0);
+buildTier(row1,L1,'แถวยาว ฝั่งขวา',L1,YP,-0.01,1,Math.PI);
+{const legs=group(row1,'ขาตั้งแถวยาว','โครงท่อเหล็กยกกรงสูงเท่าชั้นบนของกรงข้างหน้า กรงสองฝั่งหันหลังชนกัน ขี้ไก่หล่นลงพื้นดินข้างล่าง');const r=0.014,yb=YP-0.005,yt=YP+FB+H;
+  for(let x=0;x<=L1+1e-6;x+=UNIT/2){
+    rod([x,0,0.44],[x,YP,0.44],r,MAT.pipe,legs);rod([x,0,-0.44],[x,YP,-0.44],r,MAT.pipe,legs);rod([x,0,0],[x,yt,0],r,MAT.pipe,legs);
+    rod([x,yb,-0.43],[x,yb+FB,0],r,MAT.pipe,legs);rod([x,yb+FB,0],[x,yb,0.43],r,MAT.pipe,legs);
+    rod([x,0.12,-0.44],[x,0.12,0.44],r,MAT.pipe,legs);rod([x,0.55,-0.44],[x,0.55,0.44],r,MAT.pipe,legs);
+  }
+  rod([0,yb,0.43],[L1,yb,0.43],r,MAT.pipe,legs);rod([0,yb,-0.43],[L1,yb,-0.43],r,MAT.pipe,legs);rod([0,yt,0],[L1,yt,0],r,MAT.pipe,legs);
+}
+const row2=group(scene);row2.position.set(X2,0,Z2);
+stepRow(row2,L2,'กรงข้างหน้า',null);
+
+/* ---------- hens and eggs (instanced) ---------- */
+scene.updateMatrixWorld(true);
+const hens=[],eggs=[];
+const tmp=new THREE.Object3D();
+const cellList=[];
+tiers.forEach(t=>{for(let c=0;c<t.n;c++)cellList.push({t:t,c:c});});
+const order=cellList.map((_,i)=>i);
+for(let i=order.length-1;i>0;i--){const j=(R()*(i+1))|0;const s=order[i];order[i]=order[j];order[j]=s;}
+const henCount=new Array(cellList.length).fill(0);
+for(let k=0;k<HEN_TOTAL;k++)henCount[order[k%order.length]]++;
+cellList.forEach((cl,i)=>{
+  const n=henCount[i],t=cl.t,c=cl.c;
+  for(let j=0;j<n;j++){
+    const z=D-0.21+(R()-0.5)*0.03;
+    tmp.position.set(c*CELL+(j+0.5)*CELL/n+(R()-0.5)*(n>1?0.03:0.08),FB*(1-z/D),z);
+    tmp.rotation.set(0,(R()-0.5)*0.5,0);
+    const s=0.84+R()*0.12;tmp.scale.set(s,s,s);tmp.updateMatrix();
+    hens.push({m:new THREE.Matrix4().multiplyMatrices(t.obj.matrixWorld,tmp.matrix),sp:1.4+R()*2.2,ph:R()*20,hy:(R()-0.5)*0.8});
+  }
+  const ne=R()<0.4?1:(R()<0.2?2:0);
+  for(let k=0;k<ne;k++){
+    tmp.position.set(c*CELL+CELL/2+(R()-0.5)*0.22,-0.011,D+0.165);tmp.rotation.set(0,R()*Math.PI,0);tmp.scale.set(1,1,1);tmp.updateMatrix();
+    eggs.push(new THREE.Matrix4().multiplyMatrices(t.obj.matrixWorld,tmp.matrix));
+  }
+});
+function ellip(sx,sy,sz,x,y,z,rx){const g=new THREE.SphereGeometry(1,14,10);g.scale(sx,sy,sz);if(rx)g.rotateX(rx);g.translate(x,y,z);return g;}
+const hensG=group(scene,'ไก่ไข่สีน้ำตาล','ในเล้ามีไก่ '+hens.length+' ตัว ในโมเดลใส่ช่องละ 1–2 ตัว',true);
+const browns=['#8e4a22','#9b5428','#7f401d','#a65e2e','#8a4a2a'].map(c=>new THREE.Color(c));
+const henBodyParts=[
+  {geo:ellip(0.105,0.115,0.17,0,0.17,-0.02),tone:0},
+  {geo:ellip(0.065,0.085,0.07,0,0.245,0.075),tone:0.12},
+  {geo:ellip(0.055,0.1,0.07,0,0.26,-0.17,-0.5),tone:-0.22},
+];
+const beakGeo=new THREE.ConeGeometry(0.016,0.045,6);beakGeo.rotateX(Math.PI/2);beakGeo.translate(0,0.075,0.115);
+const combGeo=new THREE.BoxGeometry(0.014,0.042,0.065);combGeo.translate(0,0.135,0.045);
+const henHeadParts=[
+  {geo:ellip(0.052,0.055,0.058,0,0.08,0.05),tone:0.08},
+  {geo:combGeo,color:0xd2302a},
+  {geo:ellip(0.013,0.024,0.013,0,0.03,0.093),color:0xc0281f},
+  {geo:beakGeo,color:0xe8b24a},
+];
+const henBase=hens.map(()=>browns[(R()*browns.length)|0]);
+function makeInst(part,count){
+  const mat=part.color!=null?std({color:part.color,roughness:0.7}):std({color:0xffffff,roughness:0.9});
+  const im=new THREE.InstancedMesh(part.geo,mat,count);
+  im.castShadow=true;im.receiveShadow=true;im.frustumCulled=false;
+  if(part.color==null){
+    im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(count*3),3);
+    const c=new THREE.Color();
+    for(let i=0;i<count;i++){c.copy(henBase[i]);if(part.tone>0)c.lerp(new THREE.Color('#c88a52'),part.tone);else if(part.tone<0)c.multiplyScalar(1+part.tone);im.setColorAt(i,c);}
+  }
+  hensG.add(im);return im;
+}
+henBodyParts.forEach(p=>{const im=makeInst(p,hens.length);hens.forEach((h,i)=>im.setMatrixAt(i,h.m));im.instanceMatrix.needsUpdate=true;});
+const headMeshes=henHeadParts.map(p=>makeInst(p,hens.length));
+const pivotM=new THREE.Matrix4().makeTranslation(0,0.24,0.07),ryM=new THREE.Matrix4(),rxM=new THREE.Matrix4(),hm=new THREE.Matrix4();
+function setHeads(t){
+  for(let i=0;i<hens.length;i++){
+    const h=hens[i];
+    const peck=REDUCE?0:Math.pow(Math.max(0,Math.sin(t*h.sp+h.ph)),6)*0.75;
+    rxM.makeRotationX(0.1+peck+(REDUCE?0:Math.sin(t*0.7+h.ph)*0.06));
+    ryM.makeRotationY(REDUCE?h.hy*0.3:h.hy*Math.sin(t*0.5+h.ph));
+    hm.multiplyMatrices(h.m,pivotM).multiply(ryM).multiply(rxM);
+    for(const im of headMeshes)im.setMatrixAt(i,hm);
+  }
+  for(const im of headMeshes)im.instanceMatrix.needsUpdate=true;
+}
+setHeads(0);
+{
+  const eggsG=group(scene,'ไข่ไก่','ไข่กลิ้งออกมารอที่ที่รับไข่หน้ากรง',true);
+  const im=new THREE.InstancedMesh(ellip(0.022,0.022,0.029,0,0,0),std({color:0xffffff,roughness:0.6}),eggs.length);
+  im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(eggs.length*3),3);
+  const ec=['#e8c9a3','#d9ae82','#ecd3b5','#c99a6c'].map(c=>new THREE.Color(c));
+  eggs.forEach((m,i)=>{im.setMatrixAt(i,m);im.setColorAt(i,ec[i%ec.length]);});
+  im.castShadow=true;im.frustumCulled=false;eggsG.add(im);
+}
+
+/* ---------- roof, posts, tarp, shade net ---------- */
+const roofG=group(scene);
+const YB=2.6,YF=2.2;
+const roofY=z=>YB-(z-ZW)*(YB-YF)/(ZF-ZW);
+const TH=Math.atan((YB-YF)/(ZF-ZW)),LS=Math.hypot(ZF-ZW,YB-YF)+0.05;
+{
+  const sg=corrugated(0.8,LS,42);sg.rotateX(-Math.PI/2);
+  for(let i=0;i<5;i++){
+    const clear=i===1||i===3,rusty=i===0||i===4;
+    const m=mesh(sg,clear?MAT.clear:(rusty?MAT.rust:MAT.metal),group(roofG,clear?'แผ่นหลังคาโปร่งแสง':'หลังคาสังกะสี',clear?'แสงแดดส่องลอดลงมาในเล้าได้':'หลังคาเพิงหมาแหงน เอียงจากผนังขาวลงมาด้านหน้า'),XL+0.25+i*0.72,(YB+YF)/2,(ZW+ZF)/2,{rot:[TH,0,0],noCast:clear});
+    m.receiveShadow=!clear;
+  }
+  const frame=group(roofG,'โครงหลังคาไม้','จันทันและแปไม้รองแผ่นหลังคา');
+  [XL-0.05,-0.4,0.7,XR+0.05].forEach(x=>boxM(0.05,0.1,LS,MAT.woodOld,frame,x,(YB+YF)/2-0.11,(ZW+ZF)/2,{rot:[TH,0,0]}));
+  [ZW+0.4,ZW+1.4,ZW+2.4,ZW+3.4,ZF-0.1].forEach(z=>boxM(XR-XL+0.5,0.05,0.05,MAT.woodOld,frame,(XL+XR)/2,roofY(z)-0.035,z));
+  // sagging tarp hung under the roof
+  const tg=new THREE.PlaneGeometry(2.0,1.6,16,10);tg.rotateX(-Math.PI/2);
+  const tp=tg.attributes.position,cx=-0.15,cz=-0.7;
+  for(let i=0;i<tp.count;i++){const u=tp.getX(i)/2.0,w=tp.getZ(i)/1.6;tp.setY(i,roofY(cz+tp.getZ(i))-0.2-0.28*(1-4*u*u)*(1-4*w*w));}
+  tg.computeVertexNormals();
+  mesh(tg,MAT.tarp,group(roofG,'ผ้าใบขึงใต้หลังคา','ผ้าใบที่ขึงห้อยไว้ใต้หลังคา ช่วยบังแดดอีกชั้น'),cx,0,cz);
+  // black shade net over the front path
+  const nw=XR-XL+0.3,nd=ZFENCE-ZF;
+  const ng=new THREE.PlaneGeometry(nw,nd,16,6);ng.rotateX(-Math.PI/2);
+  const np=ng.attributes.position;
+  for(let i=0;i<np.count;i++){const u=np.getX(i)/nw,w=np.getZ(i)/nd;np.setY(i,2.08-0.12*(1-4*u*u)*(1-4*w*w));}
+  ng.computeVertexNormals();
+  mesh(ng,MAT.net,group(roofG,'สแลนกันแดด','ตาข่ายสีดำกรองแสง คลุมทางเดินหน้ากรง'),(XL+XR)/2,0,(ZF+ZFENCE)/2,{noCast:true});
+}
+const postsG=group(scene,'เสาไม้','เสาไม้รับหลังคาด้านหน้า');
+boxM(XR-XL+0.3,0.12,0.08,MAT.woodOld,postsG,(XL+XR)/2,roofY(ZF)-0.22,ZF);
+[XL+0.03,-0.38,XR].forEach(x=>mesh(new THREE.CylinderGeometry(0.05,0.06,roofY(ZF)-0.28,9),MAT.woodOld,postsG,x,(roofY(ZF)-0.28)/2,ZF));
+
+/* ---------- fence ---------- */
+function fenceGeo(len,h,g0,g1){
+  const v=[];const n=Math.round(len/0.07);
+  for(let i=0;i<=n;i++){const a=i*0.07;if(g0!=null&&a>g0&&a<g1)continue;v.push(a,0.05,0,a,h,0);}
+  for(let y=0.05;y<=h+1e-6;y+=0.075){if(g0==null)v.push(0,y,0,len,y,0);else v.push(0,y,0,g0,y,0,g1,y,0,len,y,0);}
+  return lineGeo(v);
+}
+const fenceG=group(scene,'รั้วตาข่าย','ตาข่ายกั้นรอบเล้า');
+{const GA=0.1,GB=0.8;
+ const f1=new THREE.LineSegments(fenceGeo(XR-XL,1.8,GA,GB),LINE.fence);f1.position.set(XL,0,ZFENCE);fenceG.add(f1);
+ const f2=new THREE.LineSegments(fenceGeo(ZFENCE-ZW,1.8),LINE.fence);f2.position.set(XR,0,ZW);f2.rotation.y=-Math.PI/2;fenceG.add(f2);
+ const f3=new THREE.LineSegments(fenceGeo(ZFENCE-ZF,1.8),LINE.fence);f3.position.set(XL,0,ZF);f3.rotation.y=-Math.PI/2;fenceG.add(f3);
+ const post=(x,z)=>mesh(new THREE.CylinderGeometry(0.04,0.045,2.1,8),MAT.wood,fenceG,x,1.05,z);
+ [XL,XL+GA,XL+GB,0.55,XR].forEach(x=>post(x,ZFENCE));
+ [ZW+0.6,ZW+2.0,ZW+3.4].forEach(z=>post(XR,z));
+ const gate=group(scene,'ประตูรั้ว','ทางเข้าออก ตรงมุมที่วางถังกับกระสอบ');gate.position.set(XL+GA,0,ZFENCE);gate.rotation.y=-1.1;
+ boxM(0.04,1.7,0.04,MAT.wood,gate,0.02,0.9,0);boxM(0.04,1.7,0.04,MAT.wood,gate,0.68,0.9,0);
+ boxM(0.7,0.04,0.04,MAT.wood,gate,0.35,0.08,0);boxM(0.7,0.04,0.04,MAT.wood,gate,0.35,1.73,0);boxM(0.9,0.03,0.03,MAT.wood,gate,0.35,0.9,0,{rot:[0,0,1.15]});
+}
+
+/* ---------- storage corner ---------- */
+const bucketG=group(scene,'ถังพลาสติกสีขาว','ถังมีฝาปิด ใช้ใส่อาหารหรือน้ำ');
+function bucket(x,y,z,band){const g=group(bucketG);g.position.set(x,y,z);mesh(new THREE.CylinderGeometry(0.155,0.135,0.34,20),MAT.bucket,g,0,0.17,0);mesh(new THREE.CylinderGeometry(0.165,0.165,0.03,20),MAT.lid,g,0,0.355,0);if(band)mesh(new THREE.CylinderGeometry(0.152,0.15,0.035,20),MAT.band,g,0,0.24,0);}
+bucket(XL+0.25,0.04,1.02,false);bucket(XL+0.25,0.04,1.38,true);bucket(XL+0.25,0.41,1.38,false);bucket(XL+0.6,0.04,1.0,false);
+function sackGeo(sx,sy,sz){const g=new THREE.SphereGeometry(1,14,10);const p=g.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),y=Math.max(p.getY(i),-0.75),z=p.getZ(i);const k=1+0.07*Math.sin(x*5+y*3)+0.05*Math.sin(z*7-y*4);p.setXYZ(i,x*sx*k,y*sy*k,z*sz*k);}g.computeVertexNormals();return g;}
+const sackG=group(scene,'กระสอบอาหารไก่','วางไว้มุมผนังสังกะสี ใกล้ประตูรั้ว');
+mesh(sackGeo(0.22,0.28,0.16),MAT.sack,sackG,XL+0.62,0.04+0.21,1.5,{rot:[0,0.4,0]});
+mesh(sackGeo(0.2,0.25,0.15),MAT.sack,sackG,XL+0.25,0.04+0.19,1.78,{rot:[0,-0.3,0]});
+mesh(sackGeo(0.2,0.22,0.15),MAT.sackW,sackG,XL+0.62,0.04+0.17,1.82,{rot:[0,0.9,0]});
+
+/* ---------- automatic water filling ----------
+   Far tap → long garden hose → the owner's braided hose → old toilet float valve in a header
+   bucket whose water line matches the troughs → hoses into the 5 troughs at that height.
+   The one lower trough is replaced by a nipple line fed from the same bucket. */
+const waterG=group(scene);
+const MW={
+  bucket:std({color:0x1d5f8a,transparent:true,opacity:0.3,roughness:0.4,side:DS,depthWrite:false}),
+  rim:std({color:0x1d5f8a,roughness:0.5}),
+  braid:std({color:0xc9cfd2,metalness:0.7,roughness:0.35}),
+  garden:std({color:0x3f8f3a,roughness:0.6}),
+  hose:std({color:0x2f9be0,roughness:0.5}),
+  valve:std({color:0x9aa3a8,roughness:0.5}),
+  white:std({color:0xf2f2ee,roughness:0.5}),
+  pipe:std({color:0xdfe3e4,roughness:0.6}),
+  brass:std({color:0xc9a54a,metalness:0.6,roughness:0.35}),
+  tag:std({color:0xe0483a,roughness:0.6}),
+  water:std({color:0x58b4ec,transparent:true,opacity:0.55,roughness:0.1,depthWrite:false}),
+};
+const BX=-1.0,BZ=-1.62,BR=0.17,BH=0.42,BY=1.17;          // header bucket: centre, radius, height, bottom
+const LV_FULL=YP+0.465,LV_LOW=YP+0.44;                   // the float shuts at the troughs' water line
+const MY=BY+0.03,ZM=ZW+0.05,EY=YP+0.45,RY=YP+0.5;         // main line, trough inlet, over-the-roof heights
+const V3=p=>p.isVector3?p:new THREE.Vector3(p[0],p[1],p[2]);
+function tube(pts,r,mat,parent){for(let i=0;i<pts.length-1;i++)rod(pts[i],pts[i+1],r,mat,parent);for(let i=1;i<pts.length-1;i++)mesh(new THREE.SphereGeometry(r,8,6),mat,parent,pts[i][0],pts[i][1],pts[i][2]);}
+// far tap on a standpipe outside the coop (its real place is unknown)
+const TX=-3.4,TZ=-1.7,TY=0.62;
+const tapG=group(waterG,'ก๊อกน้ำ (อยู่ห่างจากเล้า)','ตำแหน่งในภาพเดาเอา เปิดก๊อกค้างไว้ได้ เพราะลูกลอยจะปิดน้ำเองตอนถังเต็ม');
+mesh(new THREE.BoxGeometry(0.25,0.06,0.25),MAT.paver,tapG,TX,0.03,TZ);
+mesh(new THREE.CylinderGeometry(0.022,0.022,TY,10),MW.pipe,tapG,TX,TY/2,TZ);
+mesh(new THREE.CylinderGeometry(0.014,0.014,0.09,10),MW.brass,tapG,TX+0.04,TY,TZ,{rot:[0,0,Math.PI/2]});
+boxM(0.02,0.012,0.07,MW.tag,tapG,TX+0.03,TY+0.03,TZ);
+mesh(new THREE.CylinderGeometry(0.012,0.012,0.04,10),MW.brass,tapG,TX+0.085,TY-0.02,TZ);
+// long garden hose along the ground, under the tin wall, up to the bucket stand
+const gardenPts=[[TX+0.085,TY-0.04,TZ],[TX+0.12,0.03,TZ+0.05],[XL-0.15,0.03,ZW+0.3],[XL+0.2,0.03,ZW+0.3],[BX+0.12,0.03,BZ-0.12],[BX+0.12,0.6,BZ-0.12]];
+tube(gardenPts,0.009,MW.garden,group(waterG,'สายยางยาวจากก๊อก','ก๊อกอยู่ห่าง เลยต้องใช้สายยางยาวมาถึงเล้า แล้วต่อเข้ากับสายน้ำดี'));
+mesh(new THREE.CylinderGeometry(0.016,0.016,0.05,12),MW.brass,group(waterG,'ข้อต่อสายยางกับสายน้ำดี','ถ้าเกลียวไม่พอดี ซื้อข้อต่อเกลียวที่ร้านวัสดุก่อสร้าง'),BX+0.12,0.625,BZ-0.12);
+// the owner's braided hose up to the float valve under the bucket
+const braidCurve=new THREE.CatmullRomCurve3([[BX+0.12,0.65,BZ-0.12],[BX+0.13,0.85,BZ-0.08],[BX+0.08,1.05,BZ-0.02],[BX+0.05,BY,BZ]].map(V3));
+mesh(new THREE.TubeGeometry(braidCurve,40,0.008,8),MW.braid,group(waterG,'สายน้ำดีถักสแตนเลส','ของที่มีอยู่แล้ว ต่อจากสายยางเข้าใต้ลูกลอย'));
+// stand
+const standG=group(waterG,'ชั้นวางถังพัก','ยกถังสูงประมาณ '+BY.toFixed(1)+' ม. ให้ผิวน้ำในถังสูงเท่าผิวน้ำในราง');
+[[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>boxM(0.04,BY-0.03,0.04,MAT.wood,standG,BX+a*0.2,(BY-0.03)/2,BZ+b*0.2));
+boxM(0.48,0.03,0.48,MAT.wood,standG,BX,BY-0.015,BZ);
+[0.35,0.75].forEach(y=>{boxM(0.44,0.03,0.02,MAT.wood,standG,BX,y,BZ-0.2);boxM(0.44,0.03,0.02,MAT.wood,standG,BX,y,BZ+0.2);});
+// bucket (drawn see-through)
+const bucketW=group(waterG,'ถังพักน้ำ','ของจริงใช้ถังสีทึบมีฝาปิด ในภาพทำให้มองทะลุ จะได้เห็นลูกลอยกับระดับน้ำข้างใน');
+mesh(new THREE.CylinderGeometry(BR,BR*0.9,BH,28,1,true),MW.bucket,bucketW,BX,BY+BH/2,BZ,{noCast:true});
+mesh(new THREE.CircleGeometry(BR*0.9,28),MW.bucket,bucketW,BX,BY+0.003,BZ,{rot:[-Math.PI/2,0,0],noCast:true});
+mesh(new THREE.TorusGeometry(BR,0.008,6,28),MW.rim,bucketW,BX,BY+BH,BZ,{rot:[Math.PI/2,0,0]});
+const bWater=mesh(new THREE.CylinderGeometry(1,1,1,28),MW.water,bucketW,BX,BY,BZ,{noCast:true});bWater.renderOrder=2;
+// float valve
+const fvG=group(waterG,'ลูกลอย (ตัวเก่าที่มีอยู่)','น้ำลด ลูกลอยตกลง วาล์วเปิด น้ำไหลเข้า · น้ำเต็ม ลูกลอยยกขึ้น วาล์วปิด เหมือนในชักโครก');
+const VX=BX+0.05,VZ=BZ,VT=LV_FULL+0.08;
+mesh(new THREE.CylinderGeometry(0.016,0.02,VT-BY,12),MW.valve,fvG,VX,BY+(VT-BY)/2,VZ);
+mesh(new THREE.CylinderGeometry(0.032,0.032,0.035,16),MW.valve,fvG,VX,VT,VZ);
+mesh(new THREE.CylinderGeometry(0.011,0.011,0.05,10),MW.white,fvG,VX-0.04,VT-0.005,VZ,{rot:[0,0,Math.PI/2]});
+const floatCup=mesh(new THREE.CylinderGeometry(0.042,0.042,0.07,18),MW.white,fvG,VX,LV_FULL-0.02,VZ);
+// hoses from the bucket bottom into the trough end caps (5 troughs share the water line)
+const hoseG=group(waterG,'สายยางไปรางน้ำ','ต่อจากก้นถังพักเข้าฝาปลายราง ผิวน้ำในรางจะสูงเท่าผิวน้ำในถังเสมอ เหมือนน้ำในพวยกาสูงเท่าน้ำในกา');
+const OUT0=[[BX,MY,BZ-BR*0.92],[BX,MY,ZM]];
+const branches=[];
+[-1,1].forEach(s=>{
+  const tx=XC+s*(D+0.028),rx=XC+s*(D+0.028-0.09);
+  const up=[[rx,MY,ZM],[rx,RY,ZM],[rx,RY,Z1+UNIT]];
+  branches.push({draw:[[tx,MY,ZM],[tx,EY,ZM],[tx,EY,Z1+0.004]]});
+  branches.push({draw:up.concat([[tx,RY,Z1+UNIT],[tx,EY,Z1+UNIT],[tx,EY,Z1+UNIT+0.004]])});
+  if(s<0){const fr=[[rx,RY,Z2+0.3],[X2-0.06,RY,Z2+0.3],[X2-0.06,EY,Z2+0.458],[X2+0.004,EY,Z2+0.458]];branches.push({draw:[[rx,RY,Z1+UNIT]].concat(fr),flow:up.concat(fr)});}
+});
+branches.forEach(b=>{tube(b.draw,0.008,MW.hose,hoseG);if(!b.flow)b.flow=b.draw;});
+tube(OUT0.concat([[XC+D+0.028,MY,ZM]]),0.009,MW.hose,hoseG);
+// only one float valve, so the front row's lower tier (half a metre lower) drinks from a nipple
+// line: nipples let water out only when pecked, so the higher bucket cannot overflow them
+const PVC=std({color:0x2d6fb5,roughness:0.5}),VENT=std({color:0xeef6ff,transparent:true,opacity:0.4,roughness:0.2,side:DS,depthWrite:false});
+const NY=0.55+H+0.013,NZ=Z2+0.60,NX0=X2+0.01,NX1=X2+L2-0.01,DX=X2-0.06,NN=Math.round(L2/CELL);
+const rxL=XC-(D+0.028-0.09);
+const nipDrop=[[DX,RY,Z2+0.3],[DX,NY,Z2+0.3],[DX,NY,NZ],[NX0,NY,NZ]];
+const nipG=group(waterG,'ท่อนิปเปิ้ล (ชั้นล่างข้างหน้า)','ท่อ PVC 4 หุนวางบนหลังคากรงชั้นล่าง หัวนิปเปิ้ลยื่นลงไปในกรง น้ำออกเฉพาะตอนไก่จิก เลยไม่ล้น ต่อจากถังพักที่อยู่สูงกว่าได้เลย ไม่ต้องมีลูกลอยตัวที่สอง');
+tube(nipDrop,0.008,MW.hose,nipG);
+rod([NX0,NY,NZ],[NX1+0.04,NY,NZ],0.011,PVC,nipG);
+const valveG=group(waterG,'วาล์วเปิดปิด','ปิดตอนล้างท่อหรือเปลี่ยนหัวนิปเปิ้ล');
+boxM(0.03,0.04,0.03,MW.brass,valveG,DX,1.25,Z2+0.3);boxM(0.06,0.012,0.014,MW.tag,valveG,DX+0.03,1.275,Z2+0.3);
+const nipHeads=group(waterG,'หัวนิปเปิ้ล + ถ้วยรองน้ำหยด','ช่องละ 1 หัว รวม '+NN+' หัว ไก่หัดกินเป็นใน 2–3 วัน');
+for(let c=0;c<NN;c++){const x=X2+(c+0.5)*CELL;mesh(new THREE.CylinderGeometry(0.006,0.005,0.05,8),MW.valve,nipHeads,x,NY-0.035,NZ);mesh(new THREE.CylinderGeometry(0.022,0.012,0.02,12,1,true),MW.tag,nipHeads,x+0.012,NY-0.07,NZ+0.01);}
+const ventG=group(waterG,'ท่อไล่อากาศ (ท่อใส)','ตั้งท่อใสที่ปลายท่อนิปเปิ้ลให้สูงกว่าน้ำในถังพัก ไว้ไล่ฟองอากาศ น้ำในท่อจะขึ้นมาสูงเท่าน้ำในถัง แต่ไม่ล้นเพราะท่อสูงกว่า');
+const VX2=NX1+0.04,VTOP=LV_FULL+0.12;
+mesh(new THREE.CylinderGeometry(0.009,0.009,VTOP-NY,10,1,true),VENT,ventG,VX2,(NY+VTOP)/2,NZ,{noCast:true});
+const ventWater=mesh(new THREE.CylinderGeometry(0.0065,0.0065,1,8),MW.water,ventG,VX2,NY,NZ,{noCast:true});
+{const low=tiers.find(t=>t.obj.parent===row2&&t.obj.position.y<1);
+ low.obj.traverse(o=>{if(o.userData.label==='รางน้ำ (สีฟ้า)'){o.userData.label='รางน้ำเดิม (ชั้นล่างข้างหน้า)';o.userData.info='ช่วงแรกเติมน้ำไว้ 2–3 วัน ระหว่างที่ไก่หัดกินจากนิปเปิ้ล แล้วค่อยถอดออก';}});}
+// moving water dots show which way the water goes
+const dotMat=new THREE.PointsMaterial({size:0.045,transparent:true,depthWrite:false,map:(function(){const c=document.createElement('canvas');c.width=c.height=32;const g=c.getContext('2d');const gr=g.createRadialGradient(16,16,0,16,16,15);gr.addColorStop(0,'rgba(225,246,255,1)');gr.addColorStop(0.5,'rgba(70,170,235,0.9)');gr.addColorStop(1,'rgba(70,170,235,0)');g.fillStyle=gr;g.fillRect(0,0,32,32);return new THREE.CanvasTexture(c);})()});
+function makeFlow(pts,speed){const P=pts.map(V3),seg=[];let tot=0;for(let i=0;i<P.length-1;i++){const l=P[i].distanceTo(P[i+1]);seg.push(l);tot+=l;}const n=Math.max(3,Math.ceil(tot/0.07));const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(n*3),3));const p=new THREE.Points(geo,dotMat);p.frustumCulled=false;p.renderOrder=6;p.raycast=function(){};p.visible=false;waterG.add(p);return {P,seg,tot,n,speed,p};}
+const vv=new THREE.Vector3();
+function runFlow(f,t,on){f.p.visible=on;if(!on)return;const a=f.p.geometry.attributes.position,off=(t*f.speed/f.tot)%1;for(let i=0;i<f.n;i++){let d=((off+i/f.n)%1)*f.tot,k=0;while(k<f.seg.length-1&&d>f.seg[k]){d-=f.seg[k];k++;}vv.lerpVectors(f.P[k],f.P[k+1],f.seg[k]>1e-6?Math.min(1,d/f.seg[k]):0);a.setXYZ(i,vv.x,vv.y,vv.z);}a.needsUpdate=true;}
+const outFlows=branches.map(b=>makeFlow(OUT0.concat(b.flow),0.12));
+outFlows.push(makeFlow(OUT0.concat([[rxL,MY,ZM],[rxL,RY,ZM],[rxL,RY,Z1+UNIT],[rxL,RY,Z2+0.3]],nipDrop,[[NX1,NY,NZ]]),0.08));
+const inFlow=makeFlow(gardenPts.map(V3).concat(braidCurve.getPoints(24),[V3([VX,VT,VZ]),V3([VX-0.065,VT-0.005,VZ]),V3([VX-0.065,LV_LOW+0.01,VZ])]),0.7);
+const wstateEl=document.getElementById('wstate');let wOpen=null;
+function setWState(open){if(open===wOpen)return;wOpen=open;wstateEl.classList.toggle('open',open);wstateEl.textContent=open?'ลูกลอยตกลง วาล์วเปิด น้ำไหลเข้าถัง':'น้ำเต็ม ลูกลอยยกขึ้น วาล์วปิด';}
+function setLevel(lv){const h=lv-BY-0.004,r=BR*0.9+BR*0.1*(h/BH)-0.004;bWater.scale.set(r,h,r);bWater.position.y=BY+0.002+h/2;floatCup.position.y=lv-0.02;ventWater.scale.y=lv-NY;ventWater.position.y=NY+(lv-NY)/2;}
+const CYCLE=9;
+function animWater(t){const ph=(t%CYCLE)/CYCLE,filling=ph>=0.55,k=filling?(ph-0.55)/0.45:ph/0.55;setLevel(filling?LV_LOW+(LV_FULL-LV_LOW)*k:LV_FULL-(LV_FULL-LV_LOW)*k);setWState(filling);outFlows.forEach(f=>runFlow(f,t,true));runFlow(inFlow,t,filling);}
+setLevel(LV_FULL);setWState(false);
+
+/* ---------- outside: trees and grass ---------- */
+const treesG=group(scene,'ต้นไม้นอกรั้ว','',true);
+function tree(x,z,s){const g=group(treesG);g.position.set(x,0,z);const h=1.7*s;mesh(new THREE.CylinderGeometry(0.07*s,0.11*s,h,7),MAT.trunk,g,0,h/2,0);for(let i=0;i<4;i++){const r=(0.55+R()*0.45)*s;mesh(new THREE.IcosahedronGeometry(r,0),i%2?MAT.leaf:MAT.leaf2,g,(R()-0.5)*0.9*s,h+0.2*s+R()*0.6*s,(R()-0.5)*0.9*s);}}
+tree(6.2,1.6,1.0);tree(-4.4,-0.6,1.05);tree(5.0,-2.6,1.1);tree(-3.0,5.4,0.9);
+{
+  const pts=[];
+  while(pts.length<320){const x=(R()-0.5)*16,z=-2.6+R()*11;if(x>XL-0.15&&x<XR+0.15&&z<ZFENCE+0.1)continue;pts.push([x,z]);}
+  for(let i=0;i<40;i++)pts.push([XL+0.1+R()*(XR-XL-0.2),R()<0.5?ZF+0.05+R()*0.08:ZFENCE-0.25+R()*0.18]);
+  const cone=new THREE.ConeGeometry(0.04,0.16,4);cone.translate(0,0.08,0);
+  const im=new THREE.InstancedMesh(cone,std({color:0xffffff,flatShading:true}),pts.length);
+  im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(pts.length*3),3);
+  const gc=['#5d8a3a','#77a44e','#4c7a30','#8cb35e'].map(c=>new THREE.Color(c));
+  pts.forEach((p,i)=>{const s=0.7+R()*0.9;tmp.position.set(p[0],0,p[1]);tmp.rotation.set((R()-0.5)*0.3,R()*3,(R()-0.5)*0.3);tmp.scale.set(s,s*(0.8+R()*0.8),s);tmp.updateMatrix();im.setMatrixAt(i,tmp.matrix);im.setColorAt(i,gc[i%gc.length]);});
+  im.frustumCulled=false;group(scene,'หญ้า','',true).add(im);
+}
+
+/* ---------- UI ---------- */
+const cells=tiers.reduce((a,t)=>a+t.n,0),units=tiers.reduce((a,t)=>a+Math.round(t.L/UNIT),0);
+document.getElementById('stat').textContent='กรง '+units+' ตับ · '+cells+' ช่อง · ไก่ '+hens.length+' ตัว';
+
+const infoName=document.getElementById('infoName'),infoText=document.getElementById('infoText'),infoClose=document.getElementById('infoClose');
+let boxH=null;
+function clearBox(){if(boxH){scene.remove(boxH);boxH.geometry.dispose();boxH=null;}}
+function setBox(o){clearBox();if(!o)return;boxH=new THREE.BoxHelper(o,0xffc800);boxH.material.depthTest=false;boxH.renderOrder=10;scene.add(boxH);}
+const infoEl=document.querySelector('.info');
+function showInfo(o){infoEl.hidden=false;infoName.textContent=o.userData.label;infoText.textContent=o.userData.info||'';infoText.hidden=!o.userData.info;setBox(o.userData.noBox?null:o);}
+function resetInfo(){infoEl.hidden=true;clearBox();}
+infoClose.addEventListener('click',resetInfo);
+
+const ray=new THREE.Raycaster();ray.params.Line.threshold=0.02;
+const ndc=new THREE.Vector2();
+function shown(o){while(o){if(!o.visible)return false;o=o.parent;}return true;}
+function labeled(o){while(o){if(o.userData&&o.userData.label)return o;o=o.parent;}return null;}
+function pick(cx,cy){
+  const r=renderer.domElement.getBoundingClientRect();
+  ndc.set((cx-r.left)/r.width*2-1,-((cy-r.top)/r.height)*2+1);
+  ray.setFromCamera(ndc,camera);
+  const hits=ray.intersectObjects(scene.children,true);
+  for(const h of hits){if(!shown(h.object))continue;const L=labeled(h.object);if(!L)continue;showInfo(L);return;}
+  resetInfo();
+}
+let down=null,tween=null;
+const cv=renderer.domElement;
+cv.addEventListener('pointerdown',e=>{tween=null;if(e.isPrimary)down={x:e.clientX,y:e.clientY,t:performance.now()};});
+cv.addEventListener('pointerup',e=>{if(!e.isPrimary||!down)return;const dx=e.clientX-down.x,dy=e.clientY-down.y;if(dx*dx+dy*dy<49&&performance.now()-down.t<500)pick(e.clientX,e.clientY);down=null;});
+cv.addEventListener('wheel',()=>{tween=null;},{passive:true});
+
+const VIEWS={
+  overview:{p:[4.6,4.2,6.2],t:[0.1,0.8,0.1]},
+  aisle:{p:[-1.05,1.65,0.75],t:[-0.2,1.15,-1.3]},
+  hens:{p:[-1.0,1.5,-0.2],t:[-0.3,1.3,-0.6]},
+  path:{p:[1.5,1.45,2.6],t:[0.15,0.85,1.5]},
+  top:{p:[0.15,9.5,0.45],t:[0.15,0,0.3],roofOff:true},
+  water:{p:[0.2,5.0,1.6],t:[-1.6,0.5,-1.5],roofOff:true},
+  nipple:{p:[1.15,0.86,2.7],t:[0.2,0.93,1.55]},
+};
+const tRoof=document.getElementById('tRoof'),tHens=document.getElementById('tHens'),tSpin=document.getElementById('tSpin');
+function setRoof(v){roofG.visible=v;tRoof.setAttribute('aria-pressed',String(v));if(!v&&boxH)resetInfo();}
+function goView(name){
+  const v=VIEWS[name];const k=camera.aspect<0.8?1.4:1;
+  const tp=new THREE.Vector3(v.t[0],v.t[1],v.t[2]);
+  const pp=new THREE.Vector3(v.p[0],v.p[1],v.p[2]).sub(tp).multiplyScalar(k).add(tp);
+  if(v.roofOff)setRoof(false);
+  if(REDUCE){camera.position.copy(pp);controls.target.copy(tp);controls.update();return;}
+  tween={p0:camera.position.clone(),t0:controls.target.clone(),p1:pp,t1:tp,s:performance.now(),d:900};
+}
+const viewBtns=document.querySelectorAll('[data-view]');
+viewBtns.forEach(b=>b.addEventListener('click',()=>{goView(b.dataset.view);viewBtns.forEach(x=>x.classList.toggle('on',x===b));}));
+function bindToggle(btn,fn){btn.addEventListener('click',()=>{const v=btn.getAttribute('aria-pressed')!=='true';btn.setAttribute('aria-pressed',String(v));fn(v);});}
+bindToggle(tRoof,v=>setRoof(v));
+bindToggle(tHens,v=>{hensG.visible=v;});
+bindToggle(tSpin,v=>{controls.autoRotate=v;});
+bindToggle(document.getElementById('tWater'),v=>{waterG.visible=v;wstateEl.hidden=!v;});
+
+function resize(){const w=stageEl.clientWidth||innerWidth,h=stageEl.clientHeight||innerHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
+window.addEventListener('resize',resize);resize();
+if(camera.aspect<0.8){camera.position.sub(controls.target).multiplyScalar(1.4).add(controls.target);controls.update();}
+
+const clock=new THREE.Clock();
+const ease=t=>t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+function loop(){
+  requestAnimationFrame(loop);
+  if(tween){const k=Math.min(1,(performance.now()-tween.s)/tween.d),e=ease(k);camera.position.lerpVectors(tween.p0,tween.p1,e);controls.target.lerpVectors(tween.t0,tween.t1,e);if(k>=1)tween=null;}
+  controls.update();
+  if(hensG.visible&&!REDUCE)setHeads(clock.getElapsedTime());
+  if(waterG.visible&&!REDUCE)animWater(clock.getElapsedTime());
+  renderer.render(scene,camera);
+}
+goView('water');
+loop();
+if(location.hostname==='localhost'||location.hostname==='127.0.0.1'||location.protocol==='file:'||location.protocol==='data:')window.__coop={scene,camera,controls,renderer,goView,pick};
+})();
+</script>
+</body></html>
