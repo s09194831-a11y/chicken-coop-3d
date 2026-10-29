@@ -67,7 +67,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body);overflow
 .guide .gpanel b{font-family:var(--font-display);font-weight:500}
 .guide .fig{margin:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px}
 .guide .fig svg{display:block;width:100%;height:auto}
-.guide .status{margin:0;min-height:3.2em;padding:10px 14px;border-radius:12px;background:var(--water-soft);font-size:16px}
+.guide .status{margin:0;min-height:5em;padding:10px 14px;border-radius:12px;background:var(--water-soft);font-size:16px}
+@media (max-width:640px){.guide .status{min-height:8.4em}}
 .guide .steps{display:flex;flex-wrap:wrap;gap:8px}
 .guide .steps button{font-family:var(--font-display);font-size:15px;min-height:42px;padding:6px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:8px}
 .guide .steps button b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--line);font-weight:500;font-size:13px}
@@ -1132,14 +1133,16 @@ const $=id=>document.getElementById('g-'+id);
 const tubeW=$('tubeW'),dotsG=$('dots'),bub=$('bub'),statusEl=$('status'),drips=$('drips');
 const LC=150;                                           // where the bubble sits on the crest
 const YSET=95,K=25,AB=85,AT=96,R=6;                     // float level, flow factor, areas, tap refill rate
-const S={yb:YSET,yt:108,prime:0,primed:false,bubble:false,drink:0,valve:false,q:0};
+const S={yb:YSET,yt:108,prime:0,primed:false,bubble:false,drink:0,valve:false,flowing:false,q:0};
 const lx=y=>45+(y-58)*7/112,rx=y=>135-(y-58)*7/112;
 const N=26,dots=[];
+let pend='',pendT=0;
 for(let i=0;i<N;i++){const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('r','1.8');c.setAttribute('class','dot');dotsG.appendChild(c);dots.push(c);}
 let L=0,off=0,dripT=0;const dripList=[];
 function arrow(g,x,y){const l=g.querySelector('line'),h=g.querySelector('path');l.setAttribute('x1',x);l.setAttribute('x2',x);l.setAttribute('y1',y-24);l.setAttribute('y2',y-7);h.setAttribute('d','M'+(x-4)+' '+(y-9)+' L'+x+' '+(y-2)+' L'+(x+4)+' '+(y-9)+' Z');}
-function say(t){if(statusEl.textContent!==t)statusEl.textContent=t;}
-function setStep(n){G.querySelectorAll('[data-step]').forEach(b=>b.classList.toggle('on',+b.dataset.step===n));}
+// the status line only changes once a new message has held for 0.7 s, so the page below it does not jump
+function say(t,now){if(t===statusEl.textContent){pend='';return;}if(t!==pend){pend=t;pendT=now;return;}if(now-pendT>700){statusEl.textContent=t;pend='';}}
+function setStep(n){G.querySelectorAll('[data-step]').forEach(b=>b.classList.toggle('on',+b.dataset.step===n));statusEl.textContent=words();pend='';}
 $('s1').addEventListener('click',()=>{Object.assign(S,{yb:YSET,yt:108,prime:0,primed:false,bubble:false,drink:0});setStep(1);});
 $('s2').addEventListener('click',()=>{S.bubble=false;S.primed=false;S.prime=0.001;setStep(2);});
 $('s3').addEventListener('click',()=>{S.drink=1.2;setStep(3);});
@@ -1158,7 +1161,7 @@ function draw(){
   bub.style.display=S.bubble?'':'none';
   const eq=S.primed&&!S.bubble&&Math.abs(S.yb-S.yt)<0.6;
   const lv=$('lvl'),lt=$('lvlT');lv.style.display=eq?'':'none';lt.textContent=eq?'ผิวน้ำเท่ากัน':'';lt.setAttribute('y',S.yb-5);lt.setAttribute('x',180);
-  const flowing=S.primed&&!S.bubble&&Math.abs(S.q)>0.8;
+  const flowing=S.primed&&!S.bubble&&S.flowing;
   for(let i=0;i<N;i++){const c=dots[i];if(!flowing){c.style.display='none';continue;}c.style.display='';const p=tubeW.getPointAtLength((((off+i/N)%1)+1)%1*L);c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);}
   $('head').setAttribute('transform',S.drink>0?'translate(0 '+(Math.sin(performance.now()/90)*3-2)+')':'');
 }
@@ -1166,7 +1169,7 @@ function words(){
   if(S.prime>0&&!S.primed)return 'เปิดฝาตรงจุดสูงสุด เทน้ำลงไปจนเต็มท่อ (อากาศจะออกทางรูนี้) แล้วปิดฝาให้แน่น';
   if(!S.primed)return S.drink>0?'ไก่กินน้ำ แต่ในท่อมีแต่อากาศ น้ำในถังข้ามขอบมาไม่ได้':'ในท่อยังมีแต่อากาศ น้ำในถังข้ามขอบถังไม่ได้ รางเลยแห้ง → กดข้อ 2';
   if(S.bubble)return 'ฟองอากาศมาค้างตรงจุดสูงสุดของท่อ น้ำขาดตอน ไหลไม่ได้ ไก่กินน้ำเมื่อไหร่ รางจะแห้งลงเรื่อย ๆ → กดข้อ 2 เปิดฝาเติมน้ำใหม่';
-  let t=Math.abs(S.q)>0.8?'น้ำในถังสูงกว่าในราง อากาศกดผิวน้ำในถังได้แรงกว่า น้ำเลยไหลข้ามขอบมาเติมราง':'ผิวน้ำในถังกับในรางสูงเท่ากันแล้ว น้ำหยุดไหลเอง รางไม่ล้น → ลองกดข้อ 3';
+  let t=S.flowing?'น้ำในถังสูงกว่าในราง อากาศกดผิวน้ำในถังได้แรงกว่า น้ำเลยไหลข้ามขอบมาเติมราง':'ผิวน้ำในถังกับในรางสูงเท่ากันแล้ว น้ำหยุดไหลเอง รางไม่ล้น → ลองกดข้อ 3';
   if(S.valve)t+=' · น้ำในถังลด ลูกลอยตกลง วาล์วเปิดให้น้ำจากก๊อกเติมถัง';
   return t;
 }
@@ -1180,14 +1183,16 @@ function tick(now){
   if(S.drink>0){S.drink-=dt;S.yt=Math.min(111,S.yt+9*dt);}
   S.q=(S.primed&&!S.bubble)?K*(S.yt-S.yb):0;
   S.yb+=S.q*dt/AB;S.yt-=S.q*dt/AT;
-  S.valve=S.yb>YSET+0.3;
-  if(S.valve)S.yb=Math.max(YSET,S.yb-R*dt);
+  // on/off with a gap between the two thresholds, so the valve and the flow do not flicker
+  if(!S.valve&&S.yb>YSET+0.8)S.valve=true;
+  if(S.valve){S.yb=Math.max(YSET,S.yb-R*dt);if(S.yb<=YSET)S.valve=false;}
+  if(!S.flowing&&Math.abs(S.q)>2)S.flowing=true;else if(S.flowing&&Math.abs(S.q)<0.5)S.flowing=false;
   S.yt=Math.max(83,Math.min(111,S.yt));S.yb=Math.max(60,Math.min(168,S.yb));
   off=(off+Math.max(-0.12,Math.min(0.12,S.q*0.002))*dt+1)%1;
   dripT-=dt;
   if(S.valve&&dripT<=0){dripT=0.18;const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('r','2');c.setAttribute('class','wat');c.setAttribute('cx','72');c.setAttribute('cy','52');drips.appendChild(c);dripList.push({c,y:52});}
   for(let i=dripList.length-1;i>=0;i--){const d=dripList[i];d.y+=130*dt;if(d.y>=S.yb){d.c.remove();dripList.splice(i,1);}else d.c.setAttribute('cy',d.y);}
-  draw();say(words());
+  draw();say(words(),now);
 }
 requestAnimationFrame(tick);
 })();
