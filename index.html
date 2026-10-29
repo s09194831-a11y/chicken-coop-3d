@@ -53,6 +53,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body);overflow
 .tray button:hover{background:var(--line)}
 .tray button:focus-visible,.x:focus-visible{outline:2px solid var(--water);outline-offset:2px}
 .tray button.on{background:var(--ink);color:var(--panel-solid);border-color:var(--ink)}
+.tray button.go{background:var(--water);color:#ffffff;border-color:var(--water);font-weight:500}
 .tray button[aria-pressed]{padding-left:12px}
 .tray button[aria-pressed]::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;border:1.5px solid currentColor;margin-right:8px;vertical-align:-1px}
 .tray button[aria-pressed="true"]{background:var(--feed);color:var(--feed-ink);border-color:var(--feed)}
@@ -78,21 +79,22 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body);overflow
     <li><i class="sw water"></i>รางน้ำ</li>
   </ul>
   <p class="wstate" id="wstate" aria-live="off">น้ำเต็ม ลูกลอยยกขึ้น วาล์วปิด</p>
-  <p class="note">ผังตามรูปที่วาดมา (29 ต.ค. 69) ขนาดยังกะเอา ยังไม่ได้วัดจริง</p>
+  <p class="note">ผังตามรูปที่วาดมา (29 ต.ค. 69) แถวยาววัดจริง 3.30 ม. ส่วนอื่นยังกะเอา</p>
 </header>
 
 <div class="bottom">
   <section class="info panel" aria-live="polite">
     <div class="info-text">
-      <h2 id="infoName">ระบบเติมน้ำอัตโนมัติ</h2>
-      <p id="infoText">ใช้ลูกลอยตัวเดียว: ก๊อก → สายยางยาว → สายน้ำดี → ลูกลอยในถังพัก → รางน้ำ 5 ราง + ท่อนิปเปิ้ลชั้นล่าง · แตะชิ้นไหนก็ได้เพื่อดูชื่อ · ลากเพื่อหมุน</p>
+      <h2 id="infoName">ระบบน้ำแบบไม่เจาะ</h2>
+      <p id="infoText">ลูกลอยมัดแขวนในถังพัก · ท่อ PVC พาดข้ามขอบถังกับขอบราง · รางชั้นล่างมีลูกลอยเล็ก</p>
     </div>
     <button id="infoClose" class="x" type="button" aria-label="ปิด">×</button>
   </section>
   <nav class="tray panel" aria-label="มุมมองและตัวเลือก">
     <div class="grp" role="group" aria-label="มุมมอง">
+      <button id="vTour" type="button" class="go">ดูน้ำไหล</button>
       <button id="vWater" type="button" data-view="water" class="on">ดูระบบน้ำ</button>
-      <button id="vNipple" type="button" data-view="nipple">ดูนิปเปิ้ล</button>
+      <button id="vNipple" type="button" data-view="nipple">ดูรางชั้นล่าง</button>
       <button id="vOverview" type="button" data-view="overview">ภาพรวม</button>
       <button id="vAisle" type="button" data-view="aisle">ทางเดินในเล้า</button>
       <button id="vHens" type="button" data-view="hens">ใกล้ ๆ ไก่</button>
@@ -105,6 +107,11 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body);overflow
       <button id="tHens" type="button" aria-pressed="true">ไก่</button>
       <button id="tWater" type="button" aria-pressed="true">ระบบน้ำ</button>
       <button id="tSpin" type="button" aria-pressed="false">หมุนเอง</button>
+    </div>
+    <span class="sep" aria-hidden="true"></span>
+    <div class="grp" role="group" aria-label="แบบระบบน้ำ">
+      <button id="mEasy" type="button" data-mode="easy" class="on">แบบไม่เจาะ</button>
+      <button id="mDrill" type="button" data-mode="drill">แบบเจาะรู</button>
     </div>
   </nav>
 </div>
@@ -211,11 +218,12 @@ function capX(pts,x){const geo=new THREE.ShapeGeometry(shapeOf(pts));geo.rotateY
    end lies a stepped two-tier row, 1 unit per tier, facing the front path (+z).
    The pair sits as high as the front row's upper step. Each unit has its own water
    trough; they are not joined. 6 units in all. */
-const D=0.42,CELL=0.35,UNIT=1.4,H=0.42,FB=0.07,TR=0.2;
-const ZW=-2.0,XL=-1.45,XR=1.75,ZF=1.95,ZFENCE=2.8;   // white wall, side edges, roof front, front fence
+const D=0.42,H=0.42,FB=0.07,TR=0.2;
+const L1=3.3,UNIT=L1/2,CELL=UNIT/4,L2=1.4;          // long row measured 3.30 m (2 units a side); front row length is a guess
+const ZW=-2.0,XL=-1.45,XR=1.75;                      // white wall, side edges
 const XC=0.15;                                       // spine of the back-to-back pair
-const L1=UNIT*2,L2=UNIT;
 const Z1=ZW+0.1,Z2=Z1+L1+0.05;                       // pair start, front row back edge
+const ZF=Z2+1.0,ZFENCE=ZF+0.85,DZ=ZF-1.95;           // roof front and front fence follow the rows; DZ moves things placed for the old 2.8 m row
 const X2=XC-L2/2;                                    // front row centred on the pair
 const HEN_TOTAL=35;
 
@@ -227,15 +235,15 @@ const manureG=group(scene,'ขี้ไก่ใต้กรง','ขี้ไ�
 flat(0.9,L1,MAT.manure,manureG,XC,0.008,Z1+L1/2);
 flat(L2,0.8,MAT.manure,manureG,X2+L2/2,0.008,Z2+0.4);
 const paverG=group(scene,'ทางเดินแผ่นปูน','แผ่นปูนวางเป็นทางเดินหน้ากรงข้างหน้า ใช้เดินเติมอาหารและเก็บไข่');
-for(let x=XL+0.3;x<XR-0.2;x+=0.46)boxM(0.4,0.04,0.4,MAT.paver,paverG,x+(R()-0.5)*0.03,0.02,2.3+(R()-0.5)*0.04,{rot:[0,(R()-0.5)*0.08,0]});
-boxM(0.8,0.04,1.1,MAT.paver,group(scene,'ลานปูน','มุมเก็บถังและกระสอบอาหาร'),XL+0.45,0.02,1.4);
+for(let x=XL+0.3;x<XR-0.2;x+=0.46)boxM(0.4,0.04,0.4,MAT.paver,paverG,x+(R()-0.5)*0.03,0.02,ZF+0.35+(R()-0.5)*0.04,{rot:[0,(R()-0.5)*0.08,0]});
+boxM(0.8,0.04,1.1,MAT.paver,group(scene,'ลานปูน','มุมเก็บถังและกระสอบอาหาร'),XL+0.45,0.02,1.4+DZ);
 
 /* ---------- walls ---------- */
 const houseG=group(scene,'ผนังปูนสีขาว','หัวแถวกรงยาวชนผนังนี้ (ด้านหลังผนังเดาว่าเป็นตัวบ้าน)');
 mesh(new THREE.BoxGeometry(XR-XL+1.2,3.1,5.2),MAT.wall,houseG,(XL+XR)/2,1.55,ZW-2.6);
 {const rg=new THREE.ExtrudeGeometry(shapeOf([[-2.95,0],[2.95,0],[0,1.25]]),{depth:XR-XL+1.6,bevelEnabled:false});rg.rotateY(-Math.PI/2);rg.translate((XL+XR)/2+(XR-XL+1.6)/2,3.1,ZW-2.6);mesh(rg,MAT.tile,houseG);}
 const sideG=group(scene,'ผนังสังกะสี','กั้นลมและแดดด้านข้าง ตรงมุมนี้วางถังและกระสอบอาหาร');
-{const g=corrugated(0.84,2.1,44);g.rotateY(Math.PI/2);for(let i=0;i<5;i++)mesh(g,i%2?MAT.rust:MAT.metal,sideG,XL,1.05,ZW+0.42+i*0.8);}
+{const g=corrugated(0.84,2.1,44);g.rotateY(Math.PI/2);for(let i=0;i<Math.ceil((ZF-ZW)/0.8);i++)mesh(g,i%2?MAT.rust:MAT.metal,sideG,XL,1.05,ZW+0.42+i*0.8);}
 
 /* ---------- cages ---------- */
 const fy=z=>z<=D?FB*(1-z/D):-(z-D)*0.2;
@@ -251,8 +259,8 @@ function tierGeo(L){
   for(let i=0;i<=n10;i++){const x=i*0.1;S(x,FB,0,x,H,0);S(x,H,0,x,H,D);}
   [FB,0.17,0.27,0.37,H].forEach(y=>S(0,y,0,L,y,0));
   for(let i=0;i<=4;i++){const z=i*D/4;S(0,H,z,L,H,z);}
-  const nc=Math.round(L/CELL);
-  for(let c=0;c<=nc;c++){const x=c*CELL;for(let i=0;i<=5;i++){const z=i*D/5;S(x,fy(z),z,x,H,z);}[0.15,0.3].forEach(y=>S(x,y,0,x,y,D));}
+  const nc=Math.max(1,Math.round(L/CELL)),cw=L/nc;
+  for(let c=0;c<=nc;c++){const x=c*cw;for(let i=0;i<=5;i++){const z=i*D/5;S(x,fy(z),z,x,H,z);}[0.15,0.3].forEach(y=>S(x,y,0,x,y,D));}
   return lineGeo(v);
 }
 const FEED_O=[[0,0.13],[0.03,0],[0.11,0],[0.16,0.09]];
@@ -288,7 +296,7 @@ function waterTrough(L,funnelAt){
 const tiers=[];
 function buildTier(parent,L,name,x,y,z,funnelAt,rotY){
   const g=new THREE.Group();g.position.set(x,y,z);g.rotation.y=rotY||0;parent.add(g);
-  const n=Math.round(L/CELL);
+  const n=Math.max(1,Math.round(L/CELL));
   const lines=new THREE.LineSegments(tierGeo(L),LINE.wire);
   lines.userData.label=name;
   lines.userData.info='กรงลวด '+Math.round(L/UNIT)+' ตับ ยาวประมาณ '+L.toFixed(1)+' ม. แบ่ง '+n+' ช่อง พื้นกรงลาดลงด้านหน้า ไข่จะกลิ้งออกมาที่ที่รับไข่หน้ากรง';
@@ -299,7 +307,7 @@ function buildTier(parent,L,name,x,y,z,funnelAt,rotY){
     const fa=funnelAt==null?null:(funnelAt===0?(u===0?0:null):(u===nu-1?1:null));
     const wt=waterTrough(ul-0.03,fa);wt.position.set(u*ul+0.015,0.43,D-0.012);g.add(wt);
   }
-  tiers.push({obj:g,L:L,n:n});
+  tiers.push({obj:g,L:L,n:n,cw:L/n});
   return g;
 }
 // one stepped two-tier row in its own frame: x along the row, +z toward the feeding side
@@ -345,14 +353,14 @@ cellList.forEach((cl,i)=>{
   const n=henCount[i],t=cl.t,c=cl.c;
   for(let j=0;j<n;j++){
     const z=D-0.21+(R()-0.5)*0.03;
-    tmp.position.set(c*CELL+(j+0.5)*CELL/n+(R()-0.5)*(n>1?0.03:0.08),FB*(1-z/D),z);
+    tmp.position.set(c*t.cw+(j+0.5)*t.cw/n+(R()-0.5)*(n>1?0.03:0.08),FB*(1-z/D),z);
     tmp.rotation.set(0,(R()-0.5)*0.5,0);
     const s=0.84+R()*0.12;tmp.scale.set(s,s,s);tmp.updateMatrix();
     hens.push({m:new THREE.Matrix4().multiplyMatrices(t.obj.matrixWorld,tmp.matrix),sp:1.4+R()*2.2,ph:R()*20,hy:(R()-0.5)*0.8});
   }
   const ne=R()<0.4?1:(R()<0.2?2:0);
   for(let k=0;k<ne;k++){
-    tmp.position.set(c*CELL+CELL/2+(R()-0.5)*0.22,-0.011,D+0.165);tmp.rotation.set(0,R()*Math.PI,0);tmp.scale.set(1,1,1);tmp.updateMatrix();
+    tmp.position.set(c*t.cw+t.cw/2+(R()-0.5)*0.22,-0.011,D+0.165);tmp.rotation.set(0,R()*Math.PI,0);tmp.scale.set(1,1,1);tmp.updateMatrix();
     eggs.push(new THREE.Matrix4().multiplyMatrices(t.obj.matrixWorld,tmp.matrix));
   }
 });
@@ -422,7 +430,7 @@ const TH=Math.atan((YB-YF)/(ZF-ZW)),LS=Math.hypot(ZF-ZW,YB-YF)+0.05;
   }
   const frame=group(roofG,'โครงหลังคาไม้','จันทันและแปไม้รองแผ่นหลังคา');
   [XL-0.05,-0.4,0.7,XR+0.05].forEach(x=>boxM(0.05,0.1,LS,MAT.woodOld,frame,x,(YB+YF)/2-0.11,(ZW+ZF)/2,{rot:[TH,0,0]}));
-  [ZW+0.4,ZW+1.4,ZW+2.4,ZW+3.4,ZF-0.1].forEach(z=>boxM(XR-XL+0.5,0.05,0.05,MAT.woodOld,frame,(XL+XR)/2,roofY(z)-0.035,z));
+  [ZW+0.4,ZW+1.4,ZW+2.4,ZW+3.4,ZW+4.4,ZF-0.1].filter(z=>z<ZF).forEach(z=>boxM(XR-XL+0.5,0.05,0.05,MAT.woodOld,frame,(XL+XR)/2,roofY(z)-0.035,z));
   // sagging tarp hung under the roof
   const tg=new THREE.PlaneGeometry(2.0,1.6,16,10);tg.rotateX(-Math.PI/2);
   const tp=tg.attributes.position,cx=-0.15,cz=-0.7;
@@ -455,7 +463,7 @@ const fenceG=group(scene,'รั้วตาข่าย','ตาข่ายก
  const f3=new THREE.LineSegments(fenceGeo(ZFENCE-ZF,1.8),LINE.fence);f3.position.set(XL,0,ZF);f3.rotation.y=-Math.PI/2;fenceG.add(f3);
  const post=(x,z)=>mesh(new THREE.CylinderGeometry(0.04,0.045,2.1,8),MAT.wood,fenceG,x,1.05,z);
  [XL,XL+GA,XL+GB,0.55,XR].forEach(x=>post(x,ZFENCE));
- [ZW+0.6,ZW+2.0,ZW+3.4].forEach(z=>post(XR,z));
+ for(let z=ZW+0.6;z<ZFENCE-0.3;z+=1.4)post(XR,z);
  const gate=group(scene,'ประตูรั้ว','ทางเข้าออก ตรงมุมที่วางถังกับกระสอบ');gate.position.set(XL+GA,0,ZFENCE);gate.rotation.y=-1.1;
  boxM(0.04,1.7,0.04,MAT.wood,gate,0.02,0.9,0);boxM(0.04,1.7,0.04,MAT.wood,gate,0.68,0.9,0);
  boxM(0.7,0.04,0.04,MAT.wood,gate,0.35,0.08,0);boxM(0.7,0.04,0.04,MAT.wood,gate,0.35,1.73,0);boxM(0.9,0.03,0.03,MAT.wood,gate,0.35,0.9,0,{rot:[0,0,1.15]});
@@ -464,18 +472,22 @@ const fenceG=group(scene,'รั้วตาข่าย','ตาข่ายก
 /* ---------- storage corner ---------- */
 const bucketG=group(scene,'ถังพลาสติกสีขาว','ถังมีฝาปิด ใช้ใส่อาหารหรือน้ำ');
 function bucket(x,y,z,band){const g=group(bucketG);g.position.set(x,y,z);mesh(new THREE.CylinderGeometry(0.155,0.135,0.34,20),MAT.bucket,g,0,0.17,0);mesh(new THREE.CylinderGeometry(0.165,0.165,0.03,20),MAT.lid,g,0,0.355,0);if(band)mesh(new THREE.CylinderGeometry(0.152,0.15,0.035,20),MAT.band,g,0,0.24,0);}
-bucket(XL+0.25,0.04,1.02,false);bucket(XL+0.25,0.04,1.38,true);bucket(XL+0.25,0.41,1.38,false);bucket(XL+0.6,0.04,1.0,false);
+bucket(XL+0.25,0.04,1.02+DZ,false);bucket(XL+0.25,0.04,1.38+DZ,true);bucket(XL+0.25,0.41,1.38+DZ,false);bucket(XL+0.6,0.04,1.0+DZ,false);
 function sackGeo(sx,sy,sz){const g=new THREE.SphereGeometry(1,14,10);const p=g.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),y=Math.max(p.getY(i),-0.75),z=p.getZ(i);const k=1+0.07*Math.sin(x*5+y*3)+0.05*Math.sin(z*7-y*4);p.setXYZ(i,x*sx*k,y*sy*k,z*sz*k);}g.computeVertexNormals();return g;}
 const sackG=group(scene,'กระสอบอาหารไก่','วางไว้มุมผนังสังกะสี ใกล้ประตูรั้ว');
-mesh(sackGeo(0.22,0.28,0.16),MAT.sack,sackG,XL+0.62,0.04+0.21,1.5,{rot:[0,0.4,0]});
-mesh(sackGeo(0.2,0.25,0.15),MAT.sack,sackG,XL+0.25,0.04+0.19,1.78,{rot:[0,-0.3,0]});
-mesh(sackGeo(0.2,0.22,0.15),MAT.sackW,sackG,XL+0.62,0.04+0.17,1.82,{rot:[0,0.9,0]});
+mesh(sackGeo(0.22,0.28,0.16),MAT.sack,sackG,XL+0.62,0.04+0.21,1.5+DZ,{rot:[0,0.4,0]});
+mesh(sackGeo(0.2,0.25,0.15),MAT.sack,sackG,XL+0.25,0.04+0.19,1.78+DZ,{rot:[0,-0.3,0]});
+mesh(sackGeo(0.2,0.22,0.15),MAT.sackW,sackG,XL+0.62,0.04+0.17,1.82+DZ,{rot:[0,0.9,0]});
 
 /* ---------- automatic water filling ----------
-   Far tap → long garden hose → the owner's braided hose → old toilet float valve in a header
-   bucket whose water line matches the troughs → hoses into the 5 troughs at that height.
-   The one lower trough is replaced by a nipple line fed from the same bucket. */
-const waterG=group(scene);
+   One old toilet float valve in a header bucket whose water line matches the 5 upper troughs.
+   Two ways to build it (switch at the bottom of the screen):
+   drilled:     far tap → garden hose → braided hose → valve through the bucket floor → hoses into
+                the trough end caps; the lower trough of the front row gets a nipple line.
+   no drilling: the valve hangs inside the bucket from a stick, the braided hose comes over the
+                rim, PVC siphon pipes with fill caps go over the bucket rim and over each trough
+                rim, and the lower trough gets a branch with a small second float valve. */
+const waterG=group(scene),drillG=group(waterG),easyG=group(waterG);
 const MW={
   bucket:std({color:0x1d5f8a,transparent:true,opacity:0.3,roughness:0.4,side:DS,depthWrite:false}),
   rim:std({color:0x1d5f8a,roughness:0.5}),
@@ -487,6 +499,7 @@ const MW={
   pipe:std({color:0xdfe3e4,roughness:0.6}),
   brass:std({color:0xc9a54a,metalness:0.6,roughness:0.35}),
   tag:std({color:0xe0483a,roughness:0.6}),
+  tie:std({color:0x222222,roughness:0.8}),
   water:std({color:0x58b4ec,transparent:true,opacity:0.55,roughness:0.1,depthWrite:false}),
 };
 const BX=-1.0,BZ=-1.62,BR=0.17,BH=0.42,BY=1.17;          // header bucket: centre, radius, height, bottom
@@ -494,7 +507,17 @@ const LV_FULL=YP+0.465,LV_LOW=YP+0.44;                   // the float shuts at t
 const MY=BY+0.03,ZM=ZW+0.05,EY=YP+0.45,RY=YP+0.5;         // main line, trough inlet, over-the-roof heights
 const V3=p=>p.isVector3?p:new THREE.Vector3(p[0],p[1],p[2]);
 function tube(pts,r,mat,parent){for(let i=0;i<pts.length-1;i++)rod(pts[i],pts[i+1],r,mat,parent);for(let i=1;i<pts.length-1;i++)mesh(new THREE.SphereGeometry(r,8,6),mat,parent,pts[i][0],pts[i][1],pts[i][2]);}
-// far tap on a standpipe outside the coop (its real place is unknown)
+const VT=LV_FULL+0.08;                                   // float valve head height
+function floatValve(parent,x,yb,label,info){
+  const g=group(parent,label,info);
+  mesh(new THREE.CylinderGeometry(0.016,0.02,VT-yb,12),MW.valve,g,x,yb+(VT-yb)/2,BZ);
+  mesh(new THREE.CylinderGeometry(0.032,0.032,0.035,16),MW.valve,g,x,VT,BZ);
+  mesh(new THREE.CylinderGeometry(0.011,0.011,0.05,10),MW.white,g,x-0.04,VT-0.005,BZ,{rot:[0,0,Math.PI/2]});
+  return mesh(new THREE.CylinderGeometry(0.042,0.042,0.07,18),MW.white,g,x,LV_FULL-0.02,BZ);
+}
+const VALVE_INFO='น้ำลด ลูกลอยตกลง วาล์วเปิด น้ำไหลเข้า · น้ำเต็ม ลูกลอยยกขึ้น วาล์วปิด เหมือนในชักโครก';
+
+/* shared: far tap, stand, bucket */
 const TX=-3.4,TZ=-1.7,TY=0.62;
 const tapG=group(waterG,'ก๊อกน้ำ (อยู่ห่างจากเล้า)','ตำแหน่งในภาพเดาเอา เปิดก๊อกค้างไว้ได้ เพราะลูกลอยจะปิดน้ำเองตอนถังเต็ม');
 mesh(new THREE.BoxGeometry(0.25,0.06,0.25),MAT.paver,tapG,TX,0.03,TZ);
@@ -502,33 +525,27 @@ mesh(new THREE.CylinderGeometry(0.022,0.022,TY,10),MW.pipe,tapG,TX,TY/2,TZ);
 mesh(new THREE.CylinderGeometry(0.014,0.014,0.09,10),MW.brass,tapG,TX+0.04,TY,TZ,{rot:[0,0,Math.PI/2]});
 boxM(0.02,0.012,0.07,MW.tag,tapG,TX+0.03,TY+0.03,TZ);
 mesh(new THREE.CylinderGeometry(0.012,0.012,0.04,10),MW.brass,tapG,TX+0.085,TY-0.02,TZ);
-// long garden hose along the ground, under the tin wall, up to the bucket stand
-const gardenPts=[[TX+0.085,TY-0.04,TZ],[TX+0.12,0.03,TZ+0.05],[XL-0.15,0.03,ZW+0.3],[XL+0.2,0.03,ZW+0.3],[BX+0.12,0.03,BZ-0.12],[BX+0.12,0.6,BZ-0.12]];
-tube(gardenPts,0.009,MW.garden,group(waterG,'สายยางยาวจากก๊อก','ก๊อกอยู่ห่าง เลยต้องใช้สายยางยาวมาถึงเล้า แล้วต่อเข้ากับสายน้ำดี'));
-mesh(new THREE.CylinderGeometry(0.016,0.016,0.05,12),MW.brass,group(waterG,'ข้อต่อสายยางกับสายน้ำดี','ถ้าเกลียวไม่พอดี ซื้อข้อต่อเกลียวที่ร้านวัสดุก่อสร้าง'),BX+0.12,0.625,BZ-0.12);
-// the owner's braided hose up to the float valve under the bucket
-const braidCurve=new THREE.CatmullRomCurve3([[BX+0.12,0.65,BZ-0.12],[BX+0.13,0.85,BZ-0.08],[BX+0.08,1.05,BZ-0.02],[BX+0.05,BY,BZ]].map(V3));
-mesh(new THREE.TubeGeometry(braidCurve,40,0.008,8),MW.braid,group(waterG,'สายน้ำดีถักสแตนเลส','ของที่มีอยู่แล้ว ต่อจากสายยางเข้าใต้ลูกลอย'));
-// stand
-const standG=group(waterG,'ชั้นวางถังพัก','ยกถังสูงประมาณ '+BY.toFixed(1)+' ม. ให้ผิวน้ำในถังสูงเท่าผิวน้ำในราง');
+const GARDEN0=[[TX+0.085,TY-0.04,TZ],[TX+0.12,0.03,TZ+0.05],[XL-0.15,0.03,ZW+0.3],[XL+0.2,0.03,ZW+0.3]];
+const GARDEN_INFO='ก๊อกอยู่ห่าง เลยต้องใช้สายยางยาวมาถึงเล้า แล้วต่อเข้ากับสายน้ำดี';
+const standG=group(waterG,'ชั้นวางถังพัก','ยกถังสูงประมาณ '+BY.toFixed(1)+' ม. ให้ผิวน้ำในถังสูงเท่าผิวน้ำในราง วางขาบนอิฐหรือแผ่นปูน');
 [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>boxM(0.04,BY-0.03,0.04,MAT.wood,standG,BX+a*0.2,(BY-0.03)/2,BZ+b*0.2));
 boxM(0.48,0.03,0.48,MAT.wood,standG,BX,BY-0.015,BZ);
 [0.35,0.75].forEach(y=>{boxM(0.44,0.03,0.02,MAT.wood,standG,BX,y,BZ-0.2);boxM(0.44,0.03,0.02,MAT.wood,standG,BX,y,BZ+0.2);});
-// bucket (drawn see-through)
 const bucketW=group(waterG,'ถังพักน้ำ','ของจริงใช้ถังสีทึบมีฝาปิด ในภาพทำให้มองทะลุ จะได้เห็นลูกลอยกับระดับน้ำข้างใน');
 mesh(new THREE.CylinderGeometry(BR,BR*0.9,BH,28,1,true),MW.bucket,bucketW,BX,BY+BH/2,BZ,{noCast:true});
 mesh(new THREE.CircleGeometry(BR*0.9,28),MW.bucket,bucketW,BX,BY+0.003,BZ,{rot:[-Math.PI/2,0,0],noCast:true});
 mesh(new THREE.TorusGeometry(BR,0.008,6,28),MW.rim,bucketW,BX,BY+BH,BZ,{rot:[Math.PI/2,0,0]});
 const bWater=mesh(new THREE.CylinderGeometry(1,1,1,28),MW.water,bucketW,BX,BY,BZ,{noCast:true});bWater.renderOrder=2;
-// float valve
-const fvG=group(waterG,'ลูกลอย (ตัวเก่าที่มีอยู่)','น้ำลด ลูกลอยตกลง วาล์วเปิด น้ำไหลเข้า · น้ำเต็ม ลูกลอยยกขึ้น วาล์วปิด เหมือนในชักโครก');
-const VX=BX+0.05,VZ=BZ,VT=LV_FULL+0.08;
-mesh(new THREE.CylinderGeometry(0.016,0.02,VT-BY,12),MW.valve,fvG,VX,BY+(VT-BY)/2,VZ);
-mesh(new THREE.CylinderGeometry(0.032,0.032,0.035,16),MW.valve,fvG,VX,VT,VZ);
-mesh(new THREE.CylinderGeometry(0.011,0.011,0.05,10),MW.white,fvG,VX-0.04,VT-0.005,VZ,{rot:[0,0,Math.PI/2]});
-const floatCup=mesh(new THREE.CylinderGeometry(0.042,0.042,0.07,18),MW.white,fvG,VX,LV_FULL-0.02,VZ);
-// hoses from the bucket bottom into the trough end caps (5 troughs share the water line)
-const hoseG=group(waterG,'สายยางไปรางน้ำ','ต่อจากก้นถังพักเข้าฝาปลายราง ผิวน้ำในรางจะสูงเท่าผิวน้ำในถังเสมอ เหมือนน้ำในพวยกาสูงเท่าน้ำในกา');
+
+/* drilled version */
+const VXD=BX+0.05;
+const gardenD=GARDEN0.concat([[BX+0.12,0.03,BZ-0.12],[BX+0.12,0.6,BZ-0.12]]);
+tube(gardenD,0.009,MW.garden,group(drillG,'สายยางยาวจากก๊อก',GARDEN_INFO));
+mesh(new THREE.CylinderGeometry(0.016,0.016,0.05,12),MW.brass,group(drillG,'ข้อต่อสายยางกับสายน้ำดี','ถ้าเกลียวไม่พอดี ซื้อข้อต่อเกลียวที่ร้านวัสดุก่อสร้าง'),BX+0.12,0.625,BZ-0.12);
+const braidD=new THREE.CatmullRomCurve3([[BX+0.12,0.65,BZ-0.12],[BX+0.13,0.85,BZ-0.08],[BX+0.08,1.05,BZ-0.02],[VXD,BY,BZ]].map(V3));
+mesh(new THREE.TubeGeometry(braidD,40,0.008,8),MW.braid,group(drillG,'สายน้ำดีถักสแตนเลส','ของที่มีอยู่แล้ว ต่อจากสายยางเข้าใต้ลูกลอย ผ่านรูที่เจาะก้นถัง'));
+const cupD=floatValve(drillG,VXD,BY,'ลูกลอย (เสียบผ่านรูก้นถัง)',VALVE_INFO);
+const hoseG=group(drillG,'สายยางไปรางน้ำ','ต่อจากรูข้างถังพักเข้ารูที่ฝาปลายราง ผิวน้ำในรางจะสูงเท่าผิวน้ำในถังเสมอ เหมือนน้ำในพวยกาสูงเท่าน้ำในกา');
 const OUT0=[[BX,MY,BZ-BR*0.92],[BX,MY,ZM]];
 const branches=[];
 [-1,1].forEach(s=>{
@@ -540,39 +557,100 @@ const branches=[];
 });
 branches.forEach(b=>{tube(b.draw,0.008,MW.hose,hoseG);if(!b.flow)b.flow=b.draw;});
 tube(OUT0.concat([[XC+D+0.028,MY,ZM]]),0.009,MW.hose,hoseG);
-// only one float valve, so the front row's lower tier (half a metre lower) drinks from a nipple
-// line: nipples let water out only when pecked, so the higher bucket cannot overflow them
+// the front row's lower tier (half a metre lower) drinks from a nipple line: nipples let water
+// out only when pecked, so the higher bucket cannot overflow them
 const PVC=std({color:0x2d6fb5,roughness:0.5}),VENT=std({color:0xeef6ff,transparent:true,opacity:0.4,roughness:0.2,side:DS,depthWrite:false});
-const NY=0.55+H+0.013,NZ=Z2+0.60,NX0=X2+0.01,NX1=X2+L2-0.01,DX=X2-0.06,NN=Math.round(L2/CELL);
+const NY=0.55+H+0.013,NZ=Z2+0.60,NX0=X2+0.01,NX1=X2+L2-0.01,DX=X2-0.06,NN=Math.max(1,Math.round(L2/CELL));
 const rxL=XC-(D+0.028-0.09);
 const nipDrop=[[DX,RY,Z2+0.3],[DX,NY,Z2+0.3],[DX,NY,NZ],[NX0,NY,NZ]];
-const nipG=group(waterG,'ท่อนิปเปิ้ล (ชั้นล่างข้างหน้า)','ท่อ PVC 4 หุนวางบนหลังคากรงชั้นล่าง หัวนิปเปิ้ลยื่นลงไปในกรง น้ำออกเฉพาะตอนไก่จิก เลยไม่ล้น ต่อจากถังพักที่อยู่สูงกว่าได้เลย ไม่ต้องมีลูกลอยตัวที่สอง');
+const nipG=group(drillG,'ท่อนิปเปิ้ล (ชั้นล่างข้างหน้า)','ท่อ PVC 4 หุนวางบนหลังคากรงชั้นล่าง หัวนิปเปิ้ลยื่นลงไปในกรง น้ำออกเฉพาะตอนไก่จิก เลยไม่ล้น ต่อจากถังพักที่อยู่สูงกว่าได้เลย ไม่ต้องมีลูกลอยตัวที่สอง');
 tube(nipDrop,0.008,MW.hose,nipG);
 rod([NX0,NY,NZ],[NX1+0.04,NY,NZ],0.011,PVC,nipG);
-const valveG=group(waterG,'วาล์วเปิดปิด','ปิดตอนล้างท่อหรือเปลี่ยนหัวนิปเปิ้ล');
+const valveG=group(drillG,'วาล์วเปิดปิด','ปิดตอนล้างท่อหรือเปลี่ยนหัวนิปเปิ้ล');
 boxM(0.03,0.04,0.03,MW.brass,valveG,DX,1.25,Z2+0.3);boxM(0.06,0.012,0.014,MW.tag,valveG,DX+0.03,1.275,Z2+0.3);
-const nipHeads=group(waterG,'หัวนิปเปิ้ล + ถ้วยรองน้ำหยด','ช่องละ 1 หัว รวม '+NN+' หัว ไก่หัดกินเป็นใน 2–3 วัน');
-for(let c=0;c<NN;c++){const x=X2+(c+0.5)*CELL;mesh(new THREE.CylinderGeometry(0.006,0.005,0.05,8),MW.valve,nipHeads,x,NY-0.035,NZ);mesh(new THREE.CylinderGeometry(0.022,0.012,0.02,12,1,true),MW.tag,nipHeads,x+0.012,NY-0.07,NZ+0.01);}
-const ventG=group(waterG,'ท่อไล่อากาศ (ท่อใส)','ตั้งท่อใสที่ปลายท่อนิปเปิ้ลให้สูงกว่าน้ำในถังพัก ไว้ไล่ฟองอากาศ น้ำในท่อจะขึ้นมาสูงเท่าน้ำในถัง แต่ไม่ล้นเพราะท่อสูงกว่า');
+const nipHeads=group(drillG,'หัวนิปเปิ้ล + ถ้วยรองน้ำหยด','ช่องละ 1 หัว รวม '+NN+' หัว ไก่หัดกินเป็นใน 2–3 วัน');
+for(let c=0;c<NN;c++){const x=X2+(c+0.5)*L2/NN;mesh(new THREE.CylinderGeometry(0.006,0.005,0.05,8),MW.valve,nipHeads,x,NY-0.035,NZ);mesh(new THREE.CylinderGeometry(0.022,0.012,0.02,12,1,true),MW.tag,nipHeads,x+0.012,NY-0.07,NZ+0.01);}
+const ventG=group(drillG,'ท่อไล่อากาศ (ท่อใส)','ตั้งท่อใสที่ปลายท่อนิปเปิ้ลให้สูงกว่าน้ำในถังพัก ไว้ไล่ฟองอากาศ น้ำในท่อจะขึ้นมาสูงเท่าน้ำในถัง แต่ไม่ล้นเพราะท่อสูงกว่า');
 const VX2=NX1+0.04,VTOP=LV_FULL+0.12;
 mesh(new THREE.CylinderGeometry(0.009,0.009,VTOP-NY,10,1,true),VENT,ventG,VX2,(NY+VTOP)/2,NZ,{noCast:true});
 const ventWater=mesh(new THREE.CylinderGeometry(0.0065,0.0065,1,8),MW.water,ventG,VX2,NY,NZ,{noCast:true});
+
+/* no-drill version */
+const VXE=BX+0.03,VBE=BY+0.05,RIMY=BY+BH;
+const gardenE=GARDEN0.concat([[BX-0.2,0.03,BZ-0.235],[BX-0.2,RIMY+0.03,BZ-0.235]]);
+tube(gardenE,0.009,MW.garden,group(easyG,'สายยางยาวจากก๊อก',GARDEN_INFO+' มัดสายไว้กับขาชั้นวาง'));
+mesh(new THREE.CylinderGeometry(0.016,0.016,0.05,12),MW.brass,group(easyG,'ข้อต่อสายยางกับสายน้ำดี','ถ้าเกลียวไม่พอดี ซื้อข้อต่อเกลียวที่ร้านวัสดุก่อสร้าง'),BX-0.2,RIMY+0.055,BZ-0.235);
+const braidE=new THREE.CatmullRomCurve3([[BX-0.2,RIMY+0.08,BZ-0.235],[BX-0.13,RIMY+0.1,BZ-0.13],[BX-0.06,RIMY-0.02,BZ-0.05],[BX-0.03,VBE+0.08,BZ-0.02],[VXE,VBE-0.035,BZ],[VXE,VBE,BZ]].map(V3));
+mesh(new THREE.TubeGeometry(braidE,48,0.008,8),MW.braid,group(easyG,'สายน้ำดีถักสแตนเลส','ของที่มีอยู่แล้ว พาดข้ามขอบถังลงไปต่อใต้ลูกลอย ไม่ต้องเจาะถัง'));
+const cupE=floatValve(easyG,VXE,VBE,'ลูกลอย (มัดแขวนไว้ในถัง)',VALVE_INFO+' · มัดหัวลูกลอยกับไม้ที่พาดขอบถัง ให้ตั้งตรง ไม่ต้องเจาะถัง');
+{const st=group(easyG,'ไม้พาดขอบถัง','ไม้ท่อนสั้นวางพาดขอบถัง มัดหัวลูกลอยไว้ด้วยเคเบิลไทร์');
+ boxM(0.42,0.022,0.03,MAT.wood,st,BX,RIMY+0.019,BZ);
+ [-0.02,0.02].forEach(dx=>boxM(0.006,0.05,0.036,MW.tie,st,VXE+dx,VT+0.005,BZ));}
+// PVC siphon (1/2 inch): one main pipe over the bucket rim and low along the wall, then a riser
+// over each trough rim. Every high point gets a tee with a screw cap for filling the pipe.
+const PVCB=std({color:0x2d6fb5,roughness:0.45}),PR=0.0107;
+const siphonG=group(easyG,'ท่อ PVC 4 หุน (กาลักน้ำ)','ท่อหลักพาดข้ามขอบถัง วิ่งต่ำเลียบผนัง แล้วแยกขึ้นพาดข้ามขอบราง 5 ราง ทุกข้อต่อต้องทากาว PVC ให้แน่น ถ้ามีรูรั่วตรงไหน อากาศจะเข้าไป น้ำจะหยุดไหล');
+const capG=group(easyG,'จุดเติมน้ำ (สามทาง + ฝาเกลียว)','อยู่ตรงจุดสูงสุดของท่อ เปิดฝา เทน้ำจนเต็มท่อ แล้วปิดฝาให้แน่น น้ำจะเริ่มไหลเอง ถ้ารางไหนแห้งเพราะมีฟองอากาศ ก็มาเปิดฝาเติมน้ำตรงนี้อีกครั้ง');
+const SY=RIMY+0.045,TRY=YP+0.43+0.085,DIPY=YP+0.445,LOWY=MY-0.04;
+function pipe(pts,parent){const p=parent||siphonG;for(let i=0;i<pts.length-1;i++)rod(pts[i],pts[i+1],PR,PVCB,p);for(let i=1;i<pts.length-1;i++)mesh(new THREE.SphereGeometry(0.0145,10,8),PVCB,p,pts[i][0],pts[i][1],pts[i][2]);}
+function fillCap(p){mesh(new THREE.CylinderGeometry(0.0125,0.0125,0.045,12),PVCB,capG,p[0],p[1]+0.022,p[2]);mesh(new THREE.CylinderGeometry(0.016,0.016,0.022,12),MW.white,capG,p[0],p[1]+0.055,p[2]);}
+const MAINE=[[BX+0.06,BY+0.03,BZ+0.06],[BX+0.06,SY,BZ+0.06],[BX+0.27,SY,BZ+0.06],[BX+0.27,LOWY,BZ+0.06],[BX+0.27,LOWY,ZM]];
+pipe(MAINE.concat([[XC+D+0.028,LOWY,ZM]]));
+fillCap(MAINE[2]);
+const risers=[];
+[-1,1].forEach(s=>{
+  const tx=XC+s*(D+0.028),rx=XC+s*(D+0.028-0.09),hy=RY+0.03;
+  risers.push({pts:[[tx,LOWY,ZM],[tx,TRY,ZM],[tx,TRY,Z1+0.16],[tx,DIPY,Z1+0.16]],cap:[tx,TRY,ZM]});
+  risers.push({pts:[[rx,LOWY,ZM],[rx,hy,ZM],[rx,hy,Z1+UNIT+0.06],[tx,hy,Z1+UNIT+0.06],[tx,DIPY,Z1+UNIT+0.06]],cap:[tx,hy,Z1+UNIT+0.06]});
+  if(s<0)risers.push({pts:[[rx-0.035,LOWY,ZM],[rx-0.035,hy,ZM],[rx-0.035,hy,Z2+0.3],[X2+0.06,hy,Z2+0.3],[X2+0.06,hy,Z2+0.458],[X2+0.06,DIPY,Z2+0.458]],cap:[X2+0.06,hy,Z2+0.458]});
+});
+risers.forEach(r=>{pipe(r.pts);fillCap(r.cap);});
+// the lower trough of the front row sits half a metre lower: a branch runs under the front row and
+// up to a small second float valve hung at the trough end (the one extra part to buy)
+const LTZ=Z2+0.30+D+0.018,LTY=0.55+0.43+0.035,LBX=X2+0.05;
+const lowBranch=[[LBX,LOWY,ZM],[LBX,0.25,ZM],[LBX,0.25,Z2+0.98],[LBX,1.1,Z2+0.98],[LBX,1.1,LTZ],[LBX,1.075,LTZ]];
+pipe(lowBranch,group(easyG,'ท่อ PVC ลงรางชั้นล่าง','แยกจากท่อหลัก วิ่งต่ำใต้กรงข้างหน้า แล้วขึ้นมาที่ปลายรางชั้นล่าง ถังพักอยู่สูงกว่า น้ำเลยไหลลงมาเอง ลูกลอยเล็กคอยปิดไม่ให้ล้น'));
+{const g=group(easyG,'ลูกลอยตัวเล็ก (ซื้อเพิ่ม 1 ตัว)','แขวนไว้ที่ปลายรางชั้นล่าง น้ำเต็มราง ลูกลอยยกขึ้น ปิดน้ำ ไม่ต้องเจาะราง ถ้าลูกลอยใหญ่เกินราง ใส่ในกล่องเล็กข้างรางแทน');
+ boxM(0.04,0.03,0.03,MW.valve,g,LBX+0.005,1.06,LTZ);
+ rod([LBX+0.02,1.055,LTZ],[LBX+0.12,LTY+0.012,LTZ],0.003,MW.valve,g);
+ mesh(new THREE.SphereGeometry(0.017,12,10),MW.white,g,LBX+0.13,LTY+0.008,LTZ);
+ boxM(0.006,0.05,0.07,MW.tie,g,LBX-0.02,1.05,LTZ);}
+let lowTrough=null;
 {const low=tiers.find(t=>t.obj.parent===row2&&t.obj.position.y<1);
- low.obj.traverse(o=>{if(o.userData.label==='รางน้ำ (สีฟ้า)'){o.userData.label='รางน้ำเดิม (ชั้นล่างข้างหน้า)';o.userData.info='ช่วงแรกเติมน้ำไว้ 2–3 วัน ระหว่างที่ไก่หัดกินจากนิปเปิ้ล แล้วค่อยถอดออก';}});}
-// moving water dots show which way the water goes
-const dotMat=new THREE.PointsMaterial({size:0.045,transparent:true,depthWrite:false,map:(function(){const c=document.createElement('canvas');c.width=c.height=32;const g=c.getContext('2d');const gr=g.createRadialGradient(16,16,0,16,16,15);gr.addColorStop(0,'rgba(225,246,255,1)');gr.addColorStop(0.5,'rgba(70,170,235,0.9)');gr.addColorStop(1,'rgba(70,170,235,0)');g.fillStyle=gr;g.fillRect(0,0,32,32);return new THREE.CanvasTexture(c);})()});
-function makeFlow(pts,speed){const P=pts.map(V3),seg=[];let tot=0;for(let i=0;i<P.length-1;i++){const l=P[i].distanceTo(P[i+1]);seg.push(l);tot+=l;}const n=Math.max(3,Math.ceil(tot/0.07));const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(n*3),3));const p=new THREE.Points(geo,dotMat);p.frustumCulled=false;p.renderOrder=6;p.raycast=function(){};p.visible=false;waterG.add(p);return {P,seg,tot,n,speed,p};}
+ low.obj.traverse(o=>{if(!lowTrough&&o.userData.label==='รางน้ำ (สีฟ้า)')lowTrough=o;});}
+
+/* moving water dots show which way the water goes */
+const dotMat=new THREE.PointsMaterial({size:0.055,transparent:true,depthWrite:false,map:(function(){const c=document.createElement('canvas');c.width=c.height=32;const g=c.getContext('2d');const gr=g.createRadialGradient(16,16,0,16,16,15);gr.addColorStop(0,'rgba(225,246,255,1)');gr.addColorStop(0.5,'rgba(70,170,235,0.9)');gr.addColorStop(1,'rgba(70,170,235,0)');g.fillStyle=gr;g.fillRect(0,0,32,32);return new THREE.CanvasTexture(c);})()});
+function makeFlow(parent,pts,speed){const P=pts.map(V3),seg=[];let tot=0;for(let i=0;i<P.length-1;i++){const l=P[i].distanceTo(P[i+1]);seg.push(l);tot+=l;}const n=Math.max(3,Math.ceil(tot/0.07));const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(n*3),3));const p=new THREE.Points(geo,dotMat);p.frustumCulled=false;p.renderOrder=6;p.raycast=function(){};p.visible=false;parent.add(p);return {P,seg,tot,n,speed,p};}
 const vv=new THREE.Vector3();
-function runFlow(f,t,on){f.p.visible=on;if(!on)return;const a=f.p.geometry.attributes.position,off=(t*f.speed/f.tot)%1;for(let i=0;i<f.n;i++){let d=((off+i/f.n)%1)*f.tot,k=0;while(k<f.seg.length-1&&d>f.seg[k]){d-=f.seg[k];k++;}vv.lerpVectors(f.P[k],f.P[k+1],f.seg[k]>1e-6?Math.min(1,d/f.seg[k]):0);a.setXYZ(i,vv.x,vv.y,vv.z);}a.needsUpdate=true;}
-const outFlows=branches.map(b=>makeFlow(OUT0.concat(b.flow),0.12));
-outFlows.push(makeFlow(OUT0.concat([[rxL,MY,ZM],[rxL,RY,ZM],[rxL,RY,Z1+UNIT],[rxL,RY,Z2+0.3]],nipDrop,[[NX1,NY,NZ]]),0.08));
-const inFlow=makeFlow(gardenPts.map(V3).concat(braidCurve.getPoints(24),[V3([VX,VT,VZ]),V3([VX-0.065,VT-0.005,VZ]),V3([VX-0.065,LV_LOW+0.01,VZ])]),0.7);
+function runFlow(f,t,on,maxD){f.p.visible=on;if(!on)return;const a=f.p.geometry.attributes.position,off=(t*f.speed/f.tot)%1;for(let i=0;i<f.n;i++){let d=((off+i/f.n)%1)*f.tot,k=0;if(maxD!=null&&d>maxD)d=maxD;while(k<f.seg.length-1&&d>f.seg[k]){d-=f.seg[k];k++;}vv.lerpVectors(f.P[k],f.P[k+1],f.seg[k]>1e-6?Math.min(1,d/f.seg[k]):0);a.setXYZ(i,vv.x,vv.y,vv.z);}a.needsUpdate=true;}
+const spout=x=>[V3([x,VT,BZ]),V3([x-0.065,VT-0.005,BZ]),V3([x-0.065,LV_LOW+0.01,BZ])];
+const FLOWS={
+  drill:{out:branches.map(b=>makeFlow(drillG,OUT0.concat(b.flow),0.12)).concat([makeFlow(drillG,OUT0.concat([[rxL,MY,ZM],[rxL,RY,ZM],[rxL,RY,Z1+UNIT],[rxL,RY,Z2+0.3]],nipDrop,[[NX1,NY,NZ]]),0.08)]),
+         inn:makeFlow(drillG,gardenD.map(V3).concat(braidD.getPoints(24),spout(VXD)),0.7)},
+  easy:{out:risers.map(r=>makeFlow(easyG,MAINE.concat([[r.pts[0][0],LOWY,ZM]],r.pts.slice(1)),0.1)).concat([makeFlow(easyG,MAINE.concat([[LBX,LOWY,ZM]],lowBranch.slice(1)),0.1)]),
+        inn:makeFlow(easyG,gardenE.map(V3).concat(braidE.getPoints(28),spout(VXE)),0.7)},
+};
 const wstateEl=document.getElementById('wstate');let wOpen=null;
 function setWState(open){if(open===wOpen)return;wOpen=open;wstateEl.classList.toggle('open',open);wstateEl.textContent=open?'ลูกลอยตกลง วาล์วเปิด น้ำไหลเข้าถัง':'น้ำเต็ม ลูกลอยยกขึ้น วาล์วปิด';}
-function setLevel(lv){const h=lv-BY-0.004,r=BR*0.9+BR*0.1*(h/BH)-0.004;bWater.scale.set(r,h,r);bWater.position.y=BY+0.002+h/2;floatCup.position.y=lv-0.02;ventWater.scale.y=lv-NY;ventWater.position.y=NY+(lv-NY)/2;}
+function setLevel(lv){const h=lv-BY-0.004,r=BR*0.9+BR*0.1*(h/BH)-0.004;bWater.scale.set(r,h,r);bWater.position.y=BY+0.002+h/2;cupD.position.y=cupE.position.y=lv-0.02;ventWater.scale.y=lv-NY;ventWater.position.y=NY+(lv-NY)/2;}
+let MODE='easy';
+const MODE_TEXT={
+  easy:['ระบบน้ำแบบไม่เจาะ','ลูกลอยมัดแขวนในถังพัก · สายน้ำดีพาดข้ามขอบถัง · ท่อ PVC 4 หุนพาดข้ามขอบถังกับขอบราง 5 ราง (กาลักน้ำ) มีฝาเติมน้ำตรงจุดสูงสุด 6 จุด · รางชั้นล่างต่อท่อลงมา มีลูกลอยเล็กอีกตัว (ซื้อเพิ่ม) · เดินดูทุกเช้าว่าไม่มีรางไหนแห้ง'],
+  drill:['ระบบน้ำแบบเจาะรู','ลูกลอยเสียบผ่านรูก้นถัง · สายยางต่อจากรูข้างถังเข้ารูที่ฝาปลายราง 5 ราง · รางชั้นล่างเปลี่ยนเป็นท่อนิปเปิ้ล · ต้องเจาะถังกับฝาราง แต่ไม่มีปัญหาฟองอากาศทำน้ำหยุดไหล'],
+};
+function setMode(m){
+  MODE=m;drillG.visible=m==='drill';easyG.visible=m==='easy';
+  if(m==='drill'){lowTrough.userData.label='รางน้ำเดิม (ชั้นล่างข้างหน้า)';lowTrough.userData.info='ช่วงแรกเติมน้ำไว้ 2–3 วัน ระหว่างที่ไก่หัดกินจากนิปเปิ้ล แล้วค่อยถอดออก';}
+  else{lowTrough.userData.label='รางน้ำชั้นล่าง (มีลูกลอยเล็ก)';lowTrough.userData.info='รางนี้อยู่ต่ำกว่าถังพัก ต่อท่อ PVC ลงมาจากท่อหลัก แล้วมีลูกลอยเล็กปิดน้ำเมื่อเต็ม น้ำจึงไม่ล้น';}
+  document.getElementById('infoName').textContent=MODE_TEXT[m][0];
+  const p=document.getElementById('infoText');p.textContent=MODE_TEXT[m][1];p.hidden=false;
+  document.querySelector('.info').hidden=false;
+  ['drill','easy'].forEach(k=>{if(k!==m)FLOWS[k].out.concat([FLOWS[k].inn]).forEach(f=>{f.p.visible=false;if(f.core)f.core.visible=false;});});
+}
 const CYCLE=9;
-function animWater(t){const ph=(t%CYCLE)/CYCLE,filling=ph>=0.55,k=filling?(ph-0.55)/0.45:ph/0.55;setLevel(filling?LV_LOW+(LV_FULL-LV_LOW)*k:LV_FULL-(LV_FULL-LV_LOW)*k);setWState(filling);outFlows.forEach(f=>runFlow(f,t,true));runFlow(inFlow,t,filling);}
-setLevel(LV_FULL);setWState(false);
+function animWater(t){const ph=(t%CYCLE)/CYCLE,filling=ph>=0.55,k=filling?(ph-0.55)/0.45:ph/0.55;setLevel(filling?LV_LOW+(LV_FULL-LV_LOW)*k:LV_FULL-(LV_FULL-LV_LOW)*k);setWState(filling);const F=FLOWS[MODE];F.out.forEach(f=>runFlow(f,t,true));runFlow(F.inn,t,filling);}
+setLevel(LV_FULL);setWState(false);setMode('easy');
 
 /* ---------- outside: trees and grass ---------- */
 const treesG=group(scene,'ต้นไม้นอกรั้ว','',true);
@@ -615,20 +693,20 @@ function pick(cx,cy){
   for(const h of hits){if(!shown(h.object))continue;const L=labeled(h.object);if(!L)continue;showInfo(L);return;}
   resetInfo();
 }
-let down=null,tween=null;
+let down=null,tween=null,tour=null;
 const cv=renderer.domElement;
-cv.addEventListener('pointerdown',e=>{tween=null;if(e.isPrimary)down={x:e.clientX,y:e.clientY,t:performance.now()};});
+cv.addEventListener('pointerdown',e=>{tween=null;if(tour)tour.free=true;if(e.isPrimary)down={x:e.clientX,y:e.clientY,t:performance.now()};});
 cv.addEventListener('pointerup',e=>{if(!e.isPrimary||!down)return;const dx=e.clientX-down.x,dy=e.clientY-down.y;if(dx*dx+dy*dy<49&&performance.now()-down.t<500)pick(e.clientX,e.clientY);down=null;});
-cv.addEventListener('wheel',()=>{tween=null;},{passive:true});
+cv.addEventListener('wheel',()=>{tween=null;if(tour)tour.free=true;},{passive:true});
 
 const VIEWS={
   overview:{p:[4.6,4.2,6.2],t:[0.1,0.8,0.1]},
   aisle:{p:[-1.05,1.65,0.75],t:[-0.2,1.15,-1.3]},
   hens:{p:[-1.0,1.5,-0.2],t:[-0.3,1.3,-0.6]},
-  path:{p:[1.5,1.45,2.6],t:[0.15,0.85,1.5]},
-  top:{p:[0.15,9.5,0.45],t:[0.15,0,0.3],roofOff:true},
+  path:{p:[1.5,1.45,2.6+DZ],t:[0.15,0.85,1.5+DZ]},
+  top:{p:[0.15,9.5,0.45+DZ/2],t:[0.15,0,0.3+DZ/2],roofOff:true},
   water:{p:[0.2,5.0,1.6],t:[-1.6,0.5,-1.5],roofOff:true},
-  nipple:{p:[1.15,0.86,2.7],t:[0.2,0.93,1.55]},
+  nipple:{p:[1.0,1.05,2.75+DZ],t:[0.0,1.0,1.6+DZ]},
 };
 const tRoof=document.getElementById('tRoof'),tHens=document.getElementById('tHens'),tSpin=document.getElementById('tSpin');
 function setRoof(v){roofG.visible=v;tRoof.setAttribute('aria-pressed',String(v));if(!v&&boxH)resetInfo();}
@@ -646,7 +724,61 @@ function bindToggle(btn,fn){btn.addEventListener('click',()=>{const v=btn.getAtt
 bindToggle(tRoof,v=>setRoof(v));
 bindToggle(tHens,v=>{hensG.visible=v;});
 bindToggle(tSpin,v=>{controls.autoRotate=v;});
-bindToggle(document.getElementById('tWater'),v=>{waterG.visible=v;wstateEl.hidden=!v;});
+const tWater=document.getElementById('tWater');
+bindToggle(tWater,v=>{waterG.visible=v;wstateEl.hidden=!v;});
+const modeBtns=document.querySelectorAll('[data-mode]');
+modeBtns.forEach(b=>b.addEventListener('click',()=>{
+  modeBtns.forEach(x=>x.classList.toggle('on',x===b));
+  if(!waterG.visible){waterG.visible=true;wstateEl.hidden=false;tWater.setAttribute('aria-pressed','true');}
+  clearBox();setMode(b.dataset.mode);
+}));
+
+/* "ดูน้ำไหล": water fills the pipes from the tap to every trough while the camera follows it */
+const coreMat=new THREE.PointsMaterial({size:0.03,color:0x2f8fd8,map:dotMat.map,transparent:true,depthWrite:false});
+function addCore(f){const pts=[];for(let d=0;d<=f.tot;d+=0.025){let k=0,dd=d;while(k<f.seg.length-1&&dd>f.seg[k]){dd-=f.seg[k];k++;}vv.lerpVectors(f.P[k],f.P[k+1],f.seg[k]>1e-6?Math.min(1,dd/f.seg[k]):0);pts.push(vv.x,vv.y,vv.z);}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));const p=new THREE.Points(g,coreMat);p.frustumCulled=false;p.raycast=function(){};p.visible=false;f.p.parent.add(p);f.core=p;f.coreN=pts.length/3;}
+['drill','easy'].forEach(m=>{FLOWS[m].out.forEach(addCore);addCore(FLOWS[m].inn);});
+const troughWater=[];scene.traverse(o=>{if(o.material===MAT.waterIn)troughWater.push(o);});
+const XRAY=[PVCB,PVC,MW.hose,MW.garden,MW.braid];
+function xray(on){XRAY.forEach(m=>{m.transparent=on;m.opacity=on?0.35:1;m.depthWrite=!on;m.needsUpdate=true;});}
+const TOUR=[
+  {t:0,cap:'แรงดันจากก๊อกดันน้ำมาตามสายยางยาว ลอดใต้ผนังสังกะสีเข้าเล้า',p:[-3.1,2.4,0.9],q:[-2.0,0.5,-1.6]},
+  {t:4,cap:'ลูกลอย: น้ำในถังยังน้อย ลูกลอยต่ำ วาล์วเลยเปิด น้ำไหลลงถังพัก (แบบเดียวกับในชักโครก)',p:[0.0,2.2,-0.6],q:[-1.0,1.35,-1.62]},
+  {t:8,cap:'กาลักน้ำ: ท่อเต็มน้ำแล้ว อากาศกดผิวน้ำในถังให้น้ำไหลข้ามขอบถังไปได้ แล้ววิ่งต่ำเลียบผนังขาว',p:[1.6,2.6,0.4],q:[-0.3,1.3,-1.6]},
+  {t:12,cap:'ท่อแยกขึ้นพาดข้ามขอบราง น้ำไหลจากผิวน้ำที่สูงกว่าไปที่ต่ำกว่า จนน้ำในรางสูงเท่าในถัง แล้วหยุดเอง รางเลยไม่ล้น',p:[2.3,2.9,1.6],q:[0.15,1.3,-0.4]},
+  {t:16,cap:'รางชั้นบนข้างหน้าเติมแบบเดียวกัน ส่วนรางชั้นล่างอยู่ต่ำกว่า น้ำไหลลงเอง ลูกลอยเล็กปิดน้ำเมื่อรางเต็ม',p:[1.3,1.8,ZF+1.4],q:[0.0,1.05,Z2+0.6]},
+  {t:21,cap:'เต็มทุกรางแล้ว ลูกลอยยกขึ้น วาล์วปิด · ไก่กินน้ำ → ระดับน้ำลด → ลูกลอยตก → วาล์วเปิดเติมใหม่ วนแบบนี้ไปเรื่อย ๆ',p:VIEWS.water.p,q:VIEWS.water.t},
+];
+const TOUR_END=26,IN_T=7,OUT_T0=8,OUT_V=0.7;
+const vTour=document.getElementById('vTour');
+function reveal(f,dist){f.core.visible=true;f.core.geometry.setDrawRange(0,Math.max(0,Math.min(f.coreN,Math.floor(dist/0.025)+1)));}
+function startTour(){
+  if(!waterG.visible){waterG.visible=true;wstateEl.hidden=false;tWater.setAttribute('aria-pressed','true');}
+  setRoof(false);clearBox();xray(true);
+  ['drill','easy'].forEach(m=>FLOWS[m].out.concat([FLOWS[m].inn]).forEach(f=>{f.p.visible=false;f.core.visible=false;}));
+  tour={s:performance.now(),i:-1,free:false};
+  viewBtns.forEach(x=>x.classList.remove('on'));vTour.textContent='เริ่มใหม่';
+}
+function endTour(){
+  tour=null;xray(false);vTour.textContent='ดูน้ำไหล';
+  troughWater.forEach(m=>{m.position.y=0.035;m.visible=true;});
+  ['drill','easy'].forEach(m=>FLOWS[m].out.concat([FLOWS[m].inn]).forEach(f=>{f.core.visible=false;}));
+  setMode(MODE);
+}
+function updateTour(now){
+  const t=(now-tour.s)/1000;
+  let i=0;for(let j=0;j<TOUR.length;j++)if(t>=TOUR[j].t)i=j;
+  if(i!==tour.i){tour.i=i;const s=TOUR[i];
+    if(!tour.free)tween={p0:camera.position.clone(),t0:controls.target.clone(),p1:V3(s.p),t1:V3(s.q),s:now,d:1500};
+    infoEl.hidden=false;infoName.textContent='ดูน้ำไหล '+(i+1)+'/'+TOUR.length;infoText.textContent=s.cap;infoText.hidden=false;}
+  const F=FLOWS[MODE],inD=Math.min(1,t/IN_T)*F.inn.tot,outD=Math.max(0,t-OUT_T0)*OUT_V;
+  reveal(F.inn,inD);F.out.forEach(f=>reveal(f,outD));
+  runFlow(F.inn,now/1000,t<OUT_T0+1,inD);F.out.forEach(f=>runFlow(f,now/1000,t>OUT_T0,outD));
+  setLevel(t<4?LV_LOW-0.25:Math.min(LV_FULL,LV_LOW-0.25+(t-4)/4*(LV_FULL-LV_LOW+0.25)));
+  setWState(t<OUT_T0+1);
+  const tf=Math.max(0,Math.min(1,(t-12.5)/8));troughWater.forEach(m=>{m.position.y=0.008+0.027*tf;m.visible=tf>0.02;});
+  if(t>TOUR_END)endTour();
+}
+vTour.addEventListener('click',startTour);
 
 function resize(){const w=stageEl.clientWidth||innerWidth,h=stageEl.clientHeight||innerHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
 window.addEventListener('resize',resize);resize();
@@ -659,7 +791,8 @@ function loop(){
   if(tween){const k=Math.min(1,(performance.now()-tween.s)/tween.d),e=ease(k);camera.position.lerpVectors(tween.p0,tween.p1,e);controls.target.lerpVectors(tween.t0,tween.t1,e);if(k>=1)tween=null;}
   controls.update();
   if(hensG.visible&&!REDUCE)setHeads(clock.getElapsedTime());
-  if(waterG.visible&&!REDUCE)animWater(clock.getElapsedTime());
+  if(tour)updateTour(performance.now());
+  else if(waterG.visible&&!REDUCE)animWater(clock.getElapsedTime());
   renderer.render(scene,camera);
 }
 goView('water');
