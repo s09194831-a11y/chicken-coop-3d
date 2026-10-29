@@ -4,7 +4,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500&family=Mitr:wght@400;500&display=swap">
 <style>
-/* Layout: full-bleed 3D stage; title card pinned top-left; tap-info card and tool tray stacked at the bottom. */
+/* Layout: full-bleed 3D stage; title card pinned top-left; tap-info card and tool tray stacked at the bottom.
+   The how-it-works guide opens over the stage as a scrolling page in one narrow column. */
 :root{
   --bg:#d6e3e8;
   --panel:rgba(247,249,248,.9);
@@ -15,11 +16,18 @@
   --feed:#f2bd05;
   --feed-ink:#2b2200;
   --water:#1f80c8;
+  --gbg:#eef3f4;
+  --card:#ffffff;
+  --water-soft:#bfe1f5;
+  --wood:#a07a52;
+  --pvc:#2d6fb5;
+  --hen:#9b5428;
+  --comb:#d2302a;
   --font-display:"Mitr","Leelawadee UI","Noto Sans Thai",Tahoma,sans-serif;
   --font-body:"IBM Plex Sans Thai","Leelawadee UI","Noto Sans Thai",Tahoma,sans-serif;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1619;--panel:rgba(20,28,32,.88);--panel-solid:#141c20;--ink:#e6eef0;--muted:#9badb3;--line:rgba(230,238,240,.16);--water:#5aaee9;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#0f1619;--panel:rgba(20,28,32,.88);--panel-solid:#141c20;--ink:#e6eef0;--muted:#9badb3;--line:rgba(230,238,240,.16);--water:#5aaee9;color-scheme:dark}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1619;--panel:rgba(20,28,32,.88);--panel-solid:#141c20;--ink:#e6eef0;--muted:#9badb3;--line:rgba(230,238,240,.16);--water:#5aaee9;--gbg:#10171a;--card:#172126;--water-soft:#1d4a66;--wood:#8a6a48;--pvc:#3f7fc4;--hen:#b5683a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1619;--panel:rgba(20,28,32,.88);--panel-solid:#141c20;--ink:#e6eef0;--muted:#9badb3;--line:rgba(230,238,240,.16);--water:#5aaee9;--gbg:#10171a;--card:#172126;--water-soft:#1d4a66;--wood:#8a6a48;--pvc:#3f7fc4;--hen:#b5683a;color-scheme:dark}
 html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--font-body);overflow:hidden;-webkit-tap-highlight-color:transparent}
 #stage{position:fixed;inset:0}
@@ -35,6 +43,68 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body);overflow
 .sw.feed{background:var(--feed)}
 .sw.water{background:var(--water)}
 .note{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.howlink{justify-self:start;font-family:var(--font-body);font-size:14px;font-weight:500;color:var(--water);background:none;border:0;padding:2px 0;cursor:pointer;text-align:left}
+.howlink:hover,.howlink:focus-visible{text-decoration:underline}
+/* guide */
+.guide{position:fixed;inset:0;z-index:20;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--gbg);color:var(--ink);font-size:15px;line-height:1.55;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.guide .gbar{position:sticky;top:0;z-index:2;display:flex;justify-content:flex-end;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:linear-gradient(var(--gbg) 70%,transparent)}
+.guide .gclose{font-family:var(--font-display);font-size:15px;min-height:40px;padding:6px 14px;border-radius:10px;border:1px solid var(--ink);background:var(--ink);color:var(--panel-solid);cursor:pointer}
+.guide .gclose:focus-visible,.guide .steps button:focus-visible{outline:2px solid var(--water);outline-offset:2px}
+.guide .wrap{max-width:760px;margin:0 auto;padding-block:0 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:14px}
+.guide h1{margin:0;font-family:var(--font-display);font-weight:500;font-size:clamp(24px,5vw,32px);line-height:1.2;text-wrap:balance}
+.guide .sub{margin:2px 0 0;color:var(--muted)}
+.guide section{display:grid;gap:10px;padding-top:10px;border-top:1px solid var(--line)}
+.guide h2{margin:0;font-family:var(--font-display);font-weight:500;font-size:20px;line-height:1.3;text-wrap:balance}
+.guide section>p{margin:0;max-width:65ch}
+.guide .flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.guide .flow span{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px}
+.guide .flow span.w{background:var(--water-soft);border-color:transparent}
+.guide .flow i{font-style:normal;color:var(--muted)}
+.guide .duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.guide .gpanel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;gap:6px;min-width:0}
+.guide .gpanel svg{display:block;width:100%;height:auto;max-width:260px;margin:0 auto}
+.guide .gpanel p{margin:0;font-size:14px}
+.guide .gpanel b{font-family:var(--font-display);font-weight:500}
+.guide .fig{margin:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px}
+.guide .fig svg{display:block;width:100%;height:auto}
+.guide .status{margin:0;min-height:3.2em;padding:10px 14px;border-radius:12px;background:var(--water-soft);font-size:16px}
+.guide .steps{display:flex;flex-wrap:wrap;gap:8px}
+.guide .steps button{font-family:var(--font-display);font-size:15px;min-height:42px;padding:6px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:8px}
+.guide .steps button b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--line);font-weight:500;font-size:13px}
+.guide .steps button.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.guide .steps button.on b{background:var(--water)}
+.guide .rules{margin:0;padding:12px 14px 12px 34px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.guide .rules li+li{margin-top:4px}
+.guide ol.how{margin:0;padding-left:22px;display:grid;gap:6px;max-width:65ch}
+.guide .foot{margin:0;color:var(--muted);font-size:14px}
+.guide .tbl{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.guide table{border-collapse:collapse;width:100%;min-width:480px;font-size:14px}
+.guide th,.guide td{text-align:left;vertical-align:top;padding:8px 12px;border-bottom:1px solid var(--line)}
+.guide th{font-family:var(--font-display);font-weight:500;background:var(--water-soft)}
+.guide tr:last-child td{border-bottom:0}
+.guide td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.guide .ln{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linejoin:round}
+.guide .wood{fill:var(--wood)}
+.guide .wat{fill:var(--water);opacity:.85}
+.guide .tube-o{fill:none;stroke:var(--pvc);stroke-width:12;stroke-linejoin:round}
+.guide .tube-w{fill:none;stroke:var(--water-soft);stroke-width:6;stroke-linejoin:round}
+.guide .tube-w.full{stroke:var(--water)}
+.guide .pvc{fill:var(--pvc)}
+.guide .capc{fill:var(--card);stroke:var(--ink);stroke-width:1.2}
+.guide .dot{fill:#ffffff;opacity:.9}
+.guide .bub{fill:#ffffff;stroke:var(--ink);stroke-width:1.2}
+.guide .lbl{fill:var(--ink);font-family:var(--font-body);font-size:11px}
+.guide .lbl.m{fill:var(--muted)}
+.guide .lvl{stroke:var(--muted);stroke-width:1;stroke-dasharray:4 4}
+.guide .air{stroke:var(--muted);stroke-width:1.6;fill:none}
+.guide .airh{fill:var(--muted)}
+.guide .bars line{stroke:var(--muted);stroke-width:1}
+.guide .hen{fill:var(--hen)}
+.guide .comb{fill:var(--comb)}
+.guide .beak{fill:var(--feed)}
+.guide .valve{fill:var(--muted)}
+.guide .float{fill:#ffffff;stroke:var(--ink);stroke-width:1.2}
+.guide .tap{fill:var(--feed)}
 .wstate{margin:2px 0 0;font-size:13px;display:flex;align-items:center;gap:6px}
 .wstate::before{content:"";flex:none;width:9px;height:9px;border-radius:50%;background:var(--muted)}
 .wstate.open::before{background:var(--water)}
@@ -80,6 +150,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body);overflow
   </ul>
   <p class="wstate" id="wstate" aria-live="off">น้ำเต็ม ลูกลอยยกขึ้น วาล์วปิด</p>
   <p class="note">ผังตามรูปที่วาดมา (29 ต.ค. 69) แถวยาววัดจริง 3.30 ม. ส่วนอื่นยังกะเอา</p>
+  <button id="howBtn" type="button" class="howlink">อ่านว่าระบบน้ำทำงานยังไง →</button>
 </header>
 
 <div class="bottom">
@@ -114,6 +185,181 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body);overflow
       <button id="mDrill" type="button" data-mode="drill">แบบเจาะรู</button>
     </div>
   </nav>
+</div>
+
+<div id="guide" class="guide" role="dialog" aria-modal="true" aria-labelledby="g-title" hidden>
+  <div class="gbar"><button id="g-close" type="button" class="gclose">กลับไปดู 3D</button></div>
+  <div class="wrap">
+    <header>
+      <h1 id="g-title">ระบบน้ำเล้าไก่ ทำงานยังไง</h1>
+      <p class="sub">เติมน้ำอัตโนมัติแบบไม่เจาะ ใช้ลูกลอยกับท่อ PVC (กาลักน้ำ)</p>
+    </header>
+
+    <section>
+      <h2>น้ำเดินทางยังไง</h2>
+      <div class="flow" aria-label="ทางเดินของน้ำ">
+        <span>ก๊อกน้ำ</span><i>→</i><span>สายยางยาว</span><i>→</i><span>สายน้ำดี</span><i>→</i><span class="w">ลูกลอยในถังพัก</span><i>→</i><span>ท่อ PVC ข้ามขอบถัง</span><i>→</i><span class="w">รางน้ำ 5 ราง</span>
+      </div>
+      <div class="flow" aria-label="ทางแยกไปรางชั้นล่าง">
+        <span>ท่อ PVC</span><i>→</i><span>ท่อแยกลงต่ำ</span><i>→</i><span class="w">ลูกลอยเล็ก</span><i>→</i><span class="w">รางชั้นล่าง</span>
+      </div>
+      <p>ไม่ต้องใช้ไฟ ไม่ต้องใช้ปั๊ม ระบบนี้ใช้แค่ 3 อย่าง: แรงดันน้ำจากก๊อก, น้ำไหลจากที่สูงลงที่ต่ำ, และอากาศที่กดผิวน้ำอยู่ตลอด</p>
+    </section>
+
+    <section>
+      <h2>ลูกลอย: ตัวเปิดปิดน้ำ</h2>
+      <div class="duo">
+        <div class="gpanel">
+          <svg viewBox="0 0 200 130" role="img" aria-label="น้ำในถังน้อย ลูกลอยอยู่ต่ำ วาล์วเปิด น้ำไหลลงถัง">
+            <path d="M20 40 H70 V48" class="ln"/><rect x="62" y="48" width="14" height="14" rx="2" class="valve"/>
+            <line x1="72" y1="60" x2="118" y2="93" class="ln"/><circle cx="122" cy="96" r="9" class="float"/>
+            <rect x="68" y="66" width="3" height="5" class="wat"/><rect x="68" y="76" width="3" height="5" class="wat"/><rect x="68" y="86" width="3" height="5" class="wat"/>
+            <polygon points="31,104 169,104 166,124 34,124" class="wat"/>
+            <path d="M28 30 L34 124 H166 L172 30" class="ln"/>
+          </svg>
+          <p><b>น้ำน้อย</b> ลูกลอยตกลงมาตามน้ำ ก้านดึงวาล์วให้เปิด น้ำจากก๊อกไหลเข้าถัง</p>
+        </div>
+        <div class="gpanel">
+          <svg viewBox="0 0 200 130" role="img" aria-label="น้ำในถังเต็ม ลูกลอยลอยขึ้น วาล์วปิด">
+            <path d="M20 40 H70 V48" class="ln"/><rect x="62" y="48" width="14" height="14" rx="2" class="valve"/>
+            <line x1="72" y1="60" x2="120" y2="62" class="ln"/><circle cx="124" cy="64" r="9" class="float"/>
+            <polygon points="30,72 170,72 166,124 34,124" class="wat"/>
+            <path d="M28 30 L34 124 H166 L172 30" class="ln"/>
+          </svg>
+          <p><b>น้ำเต็ม</b> ลูกลอยลอยขึ้น ก้านดันวาล์วให้ปิด น้ำหยุดเข้า เหมือนในชักโครก</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>กาลักน้ำ: น้ำข้ามขอบได้ยังไง</h2>
+      <p>กดปุ่มทีละข้อ แล้วดูน้ำในท่อ</p>
+      <figure class="fig" aria-label="ภาพด้านข้าง: ถังพักบนชั้นวาง ท่อ PVC พาดข้ามขอบถัง มีฝาเติมน้ำที่จุดสูงสุด วิ่งต่ำ แล้วพาดข้ามขอบรางน้ำที่อยู่บนกรงไก่">
+        <svg viewBox="0 0 420 272" aria-hidden="true">
+          <line x1="0" y1="250" x2="420" y2="250" class="ln"/>
+          <path d="M0 26 H74 V34" class="ln"/>
+          <rect x="20" y="20" width="10" height="5" class="tap"/>
+          <text x="4" y="14" class="lbl">ก๊อก</text>
+          <rect x="66" y="34" width="13" height="16" rx="2" class="valve"/>
+          <line id="g-arm" x1="74" y1="47" x2="96" y2="91" class="ln"/>
+          <circle id="g-flt" cx="96" cy="91" r="8" class="float"/>
+          <g id="g-drips"></g>
+          <rect x="40" y="170" width="100" height="6" class="wood"/>
+          <rect x="48" y="176" width="6" height="74" class="wood"/>
+          <rect x="126" y="176" width="6" height="74" class="wood"/>
+          <polygon id="g-bw" class="wat" points=""/>
+          <path d="M45 58 L52 170 H128 L135 58" class="ln"/>
+          <text x="62" y="266" class="lbl">ถังพัก</text>
+          <text x="2" y="114" class="lbl m">ลูกลอย</text>
+          <line id="g-fltL" x1="30" y1="106" x2="88" y2="91" class="lvl" style="stroke-dasharray:none"/>
+          <g id="g-airB"><line x1="0" y1="0" x2="0" y2="0" class="air"/><path class="airh" d=""/></g>
+          <g id="g-airT"><line x1="0" y1="0" x2="0" y2="0" class="air"/><path class="airh" d=""/></g>
+          <rect x="262" y="115" width="116" height="100" class="ln"/>
+          <g class="bars"><line x1="281" y1="115" x2="281" y2="215"/><line x1="300" y1="115" x2="300" y2="215"/><line x1="319" y1="115" x2="319" y2="215"/><line x1="338" y1="115" x2="338" y2="215"/><line x1="357" y1="115" x2="357" y2="215"/></g>
+          <rect x="268" y="215" width="5" height="35" class="wood"/><rect x="367" y="215" width="5" height="35" class="wood"/>
+          <ellipse cx="320" cy="190" rx="30" ry="20" class="hen"/>
+          <g id="g-head"><ellipse cx="340" cy="147" rx="7" ry="12" class="hen"/><circle cx="342" cy="132" r="9" class="hen"/><path d="M337 123 l3 -6 l3 5 l3 -5 l2 7 z" class="comb"/><path d="M350 131 l7 2 l-7 3 z" class="beak"/></g>
+          <rect id="g-tw" x="272" y="95" width="96" height="17" class="wat"/>
+          <path d="M270 82 V113 H370 V82" class="ln"/>
+          <text x="290" y="266" class="lbl">รางน้ำบนกรงไก่</text>
+          <line id="g-lvl" x1="45" x2="370" y1="95" y2="95" class="lvl"/>
+          <text id="g-lvlT" x="160" y="0" class="lbl m"></text>
+          <rect x="131" y="30" width="10" height="16" class="pvc"/>
+          <rect id="g-pour" x="134" y="4" width="4" height="26" class="wat" style="display:none"/>
+          <rect id="g-cap" x="127" y="24" width="18" height="8" rx="2" class="capc"/>
+          <text x="150" y="30" class="lbl">ฝาเติมน้ำ</text>
+          <path class="tube-o" d="M112 162 V46 H160 V232 H240 V70 H295 V108"/>
+          <path id="g-tubeW" class="tube-w" d="M112 162 V46 H160 V232 H240 V70 H295 V108"/>
+          <g id="g-dots"></g>
+          <circle id="g-bub" cx="148" cy="46" r="6" class="bub" style="display:none"/>
+          <text x="170" y="245" class="lbl">ท่อ PVC 4 หุน</text>
+        </svg>
+      </figure>
+      <p class="status" id="g-status" aria-live="polite">ในท่อยังมีแต่อากาศ น้ำในถังข้ามขอบถังไม่ได้ รางเลยแห้ง → กดข้อ 2</p>
+      <div class="steps" role="group" aria-label="ขั้นตอน">
+        <button id="g-s1" type="button" data-step="1" class="on"><b>1</b>ท่อยังไม่มีน้ำ</button>
+        <button id="g-s2" type="button" data-step="2"><b>2</b>เปิดฝา เติมน้ำเต็มท่อ</button>
+        <button id="g-s3" type="button" data-step="3"><b>3</b>ไก่กินน้ำ</button>
+        <button id="g-s4" type="button" data-step="4"><b>4</b>ฟองอากาศเข้า</button>
+      </div>
+      <ul class="rules">
+        <li>ท่อต้องมีน้ำเต็ม ทุกข้อต่อทากาว PVC ให้แน่น อากาศเข้าไม่ได้</li>
+        <li>ปลายท่อทั้งสองข้างต้องจุ่มอยู่ใต้น้ำ</li>
+        <li>น้ำไหลจากผิวน้ำที่สูงกว่าไปหาที่ต่ำกว่า พอเท่ากันก็หยุดเอง รางเลยไม่ล้น</li>
+      </ul>
+      <p class="foot">ลูกศรเทาคืออากาศที่กดผิวน้ำ</p>
+    </section>
+
+    <section>
+      <h2>ทำไมรางไม่ล้น</h2>
+      <ul class="rules">
+        <li>ลูกลอยในถังพักปิดน้ำตอนผิวน้ำในถังสูงเท่าผิวน้ำในราง น้ำในรางเลยสูงเกินนั้นไม่ได้</li>
+        <li>รางชั้นล่างอยู่ต่ำกว่าถังครึ่งเมตร ถ้าต่อท่อลงไปเฉย ๆ น้ำจะไหลไม่หยุด จึงมีลูกลอยเล็กอีกตัวคอยปิด</li>
+        <li>กันไว้เผื่อลูกลอยเก่าเสีย: เจาะรูน้ำล้นที่ข้างถังพัก สูงกว่าระดับที่ลูกลอยปิดประมาณ 1 ซม. แล้วต่อสายไปทิ้งนอกเล้า</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>เริ่มใช้ครั้งแรก</h2>
+      <ol class="how">
+        <li>ตั้งถังพักให้ผิวน้ำในถังสูงเท่าผิวน้ำในราง ใช้สายยางใสใส่น้ำวัดระดับแบบช่างก่อสร้าง</li>
+        <li>ทากาว PVC ทุกข้อต่อ รอให้กาวแห้งตามที่เขียนไว้ข้างกระป๋อง</li>
+        <li>เทน้ำใส่ทุกรางนิดหน่อย ให้ปลายท่อจมอยู่ในน้ำ</li>
+        <li>เปิดก๊อก ปล่อยให้ลูกลอยเติมน้ำจนถังพักเต็ม</li>
+        <li>เปิดฝาเติมน้ำทุกฝา เทน้ำที่ฝาบนขอบถังจนท่อเต็ม แล้วปิดฝาให้แน่นทีละฝา</li>
+        <li>ดูว่าน้ำไหลเข้าทุกรางจนเต็ม แล้วหยุดเอง</li>
+        <li>เฝ้าดูครึ่งชั่วโมง เช็กว่าไม่มีรางไหนล้น และไม่มีข้อต่อไหนรั่ว</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>ปัญหาที่อาจเจอ</h2>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>อาการ</th><th>สาเหตุ</th><th>แก้ยังไง</th></tr></thead>
+          <tbody>
+            <tr><td>รางเดียวแห้ง รางอื่นปกติ</td><td>ฟองอากาศค้างในท่อเส้นนั้น</td><td>เปิดฝาจุดสูงสุดของเส้นนั้น เติมน้ำจนเต็ม แล้วปิดฝา</td></tr>
+            <tr><td>ทุกรางแห้ง</td><td>ก๊อกปิด ลูกลอยค้าง หรือท่อหลักมีอากาศ</td><td>เช็กก๊อก ดูน้ำในถัง แล้วเติมน้ำที่ฝาบนขอบถัง</td></tr>
+            <tr><td>รางล้น</td><td>ถังตั้งสูงไป หรือลูกลอยปิดไม่สนิท</td><td>ลดระดับลูกลอยลง และทำรูน้ำล้นที่ถัง</td></tr>
+            <tr><td>น้ำในถังเป็นสีเขียว</td><td>แดดส่องถัง ตะไคร่ขึ้น</td><td>ใช้ถังสีทึบหรือหุ้มถุงดำ ปิดฝา แล้วล้างถัง</td></tr>
+            <tr><td>น้ำซึมตามข้อต่อ</td><td>ทากาวไม่ทั่ว</td><td>ตัดท่อตรงนั้นออก แล้วต่อใหม่ ทากาวให้รอบ</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>ดูแลประจำ</h2>
+      <ul class="rules">
+        <li>ทุกเช้า: เดินดูว่ามีน้ำทุกราง</li>
+        <li>ทุกสัปดาห์: ล้างรางน้ำ</li>
+        <li>ทุกเดือน: ล้างถังพัก และดูว่าลูกลอยยังขยับขึ้นลงคล่อง</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>ของที่ต้องใช้</h2>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>ของ</th><th>จำนวน</th><th>หมายเหตุ</th></tr></thead>
+          <tbody>
+            <tr><td>ท่อ PVC 4 หุน (เส้นละ 4 ม.)</td><td class="n">6 เส้น</td><td>ใช้จริงประมาณ 20 ม.</td></tr>
+            <tr><td>ข้องอ 90° 4 หุน</td><td class="n">17 + 2 ตัว</td><td>+2 คือซื้อสำรอง</td></tr>
+            <tr><td>สามทาง 4 หุน</td><td class="n">11 + 2 ตัว</td><td>+2 คือซื้อสำรอง</td></tr>
+            <tr><td>ต่อตรงเกลียวนอก + ฝาครอบเกลียวใน</td><td class="n">6 ชุด</td><td>ทำเป็นฝาเติมน้ำ</td></tr>
+            <tr><td>กาวทาท่อ PVC, เทปพันเกลียว</td><td class="n">อย่างละ 1</td><td></td></tr>
+            <tr><td>ถังพลาสติกสีทึบมีฝา 30–50 ลิตร</td><td class="n">1 ใบ</td><td>ถังพัก</td></tr>
+            <tr><td>ชั้นวางถังสูงประมาณ 1.2 ม.</td><td class="n">1 อัน</td><td>วางขาบนอิฐ</td></tr>
+            <tr><td>ลูกลอยตัวเล็ก + ข้อต่อเกลียว</td><td class="n">1 ชุด</td><td>สำหรับรางชั้นล่าง</td></tr>
+            <tr><td>สายยาง</td><td class="n">ระยะก๊อกถึงเล้า + 2 ม.</td><td></td></tr>
+            <tr><td>ข้อต่อสายยางกับสายน้ำดี, เคเบิลไทร์</td><td class="n">อย่างละ 1</td><td></td></tr>
+            <tr><td>ลูกลอยชักโครก, สายน้ำดี</td><td class="n">มีแล้ว</td><td>ไม่ต้องซื้อ</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="foot">จำนวนนับจากโมเดล 3D แถวยาววัดจริง 3.30 ม. ระยะอื่นยังกะเอา ราคารวมประมาณ 800–1,400 บาท ไม่รวมสายยาง</p>
+    </section>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -858,6 +1104,7 @@ const clock=new THREE.Clock();
 const ease=t=>t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
 function loop(){
   requestAnimationFrame(loop);
+  if(!guideEl.hidden)return;
   if(tween){const k=Math.min(1,(performance.now()-tween.s)/tween.d),e=ease(k);camera.position.lerpVectors(tween.p0,tween.p1,e);controls.target.lerpVectors(tween.t0,tween.t1,e);if(k>=1)tween=null;}
   controls.update();
   if(hensG.visible&&!REDUCE)setHeads(clock.getElapsedTime());
@@ -865,9 +1112,84 @@ function loop(){
   else if(waterG.visible&&!REDUCE)animWater(clock.getElapsedTime());
   renderer.render(scene,camera);
 }
+// the how-it-works guide opens over the stage; the 3D view pauses while it is open
+const guideEl=document.getElementById('guide'),howBtn=document.getElementById('howBtn'),gClose=document.getElementById('g-close');
+function openGuide(){guideEl.hidden=false;guideEl.scrollTop=0;gClose.focus();}
+function closeGuide(){guideEl.hidden=true;howBtn.focus();}
+howBtn.addEventListener('click',openGuide);gClose.addEventListener('click',closeGuide);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!guideEl.hidden)closeGuide();});
 goView('water');
 loop();
 if(location.hostname==='localhost'||location.hostname==='127.0.0.1'||location.protocol==='file:'||location.protocol==='data:')window.__coop={scene,camera,controls,renderer,goView,pick};
+})();
+</script>
+<script>
+/* guide: live siphon diagram (bucket → PVC pipe over the rims → trough) */
+(function(){
+'use strict';
+const G=document.getElementById('guide');
+const $=id=>document.getElementById('g-'+id);
+const tubeW=$('tubeW'),dotsG=$('dots'),bub=$('bub'),statusEl=$('status'),drips=$('drips');
+const LC=150;                                           // where the bubble sits on the crest
+const YSET=95,K=25,AB=85,AT=96,R=6;                     // float level, flow factor, areas, tap refill rate
+const S={yb:YSET,yt:108,prime:0,primed:false,bubble:false,drink:0,valve:false,q:0};
+const lx=y=>45+(y-58)*7/112,rx=y=>135-(y-58)*7/112;
+const N=26,dots=[];
+for(let i=0;i<N;i++){const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('r','1.8');c.setAttribute('class','dot');dotsG.appendChild(c);dots.push(c);}
+let L=0,off=0,dripT=0;const dripList=[];
+function arrow(g,x,y){const l=g.querySelector('line'),h=g.querySelector('path');l.setAttribute('x1',x);l.setAttribute('x2',x);l.setAttribute('y1',y-24);l.setAttribute('y2',y-7);h.setAttribute('d','M'+(x-4)+' '+(y-9)+' L'+x+' '+(y-2)+' L'+(x+4)+' '+(y-9)+' Z');}
+function say(t){if(statusEl.textContent!==t)statusEl.textContent=t;}
+function setStep(n){G.querySelectorAll('[data-step]').forEach(b=>b.classList.toggle('on',+b.dataset.step===n));}
+$('s1').addEventListener('click',()=>{Object.assign(S,{yb:YSET,yt:108,prime:0,primed:false,bubble:false,drink:0});setStep(1);});
+$('s2').addEventListener('click',()=>{S.bubble=false;S.primed=false;S.prime=0.001;setStep(2);});
+$('s3').addEventListener('click',()=>{S.drink=1.2;setStep(3);});
+$('s4').addEventListener('click',()=>{S.bubble=true;if(!S.primed&&S.prime===0)S.primed=true;setStep(4);});
+function draw(){
+  $('bw').setAttribute('points',[lx(S.yb),S.yb,rx(S.yb),S.yb,128,170,52,170].join(' '));
+  const tw=$('tw');tw.setAttribute('y',S.yt);tw.setAttribute('height',Math.max(0,112-S.yt));
+  $('flt').setAttribute('cy',S.yb-4);$('arm').setAttribute('y2',S.yb-4);$('fltL').setAttribute('y2',S.yb-4);
+  arrow($('airB'),121,S.yb);arrow($('airT'),330,S.yt);
+  tubeW.classList.toggle('full',S.primed||S.prime>0);
+  if(S.primed&&S.bubble)tubeW.style.strokeDasharray=(LC-10)+' 20 '+L;
+  else if(!S.primed&&S.prime>0)tubeW.style.strokeDasharray=(S.prime*L)+' '+L;
+  else tubeW.style.strokeDasharray='none';
+  const pouring=S.prime>0&&!S.primed;
+  $('cap').setAttribute('transform',pouring?'translate(0 -10)':'');$('pour').style.display=pouring?'':'none';
+  bub.style.display=S.bubble?'':'none';
+  const eq=S.primed&&!S.bubble&&Math.abs(S.yb-S.yt)<0.6;
+  const lv=$('lvl'),lt=$('lvlT');lv.style.display=eq?'':'none';lt.textContent=eq?'ผิวน้ำเท่ากัน':'';lt.setAttribute('y',S.yb-5);lt.setAttribute('x',180);
+  const flowing=S.primed&&!S.bubble&&Math.abs(S.q)>0.8;
+  for(let i=0;i<N;i++){const c=dots[i];if(!flowing){c.style.display='none';continue;}c.style.display='';const p=tubeW.getPointAtLength((((off+i/N)%1)+1)%1*L);c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);}
+  $('head').setAttribute('transform',S.drink>0?'translate(0 '+(Math.sin(performance.now()/90)*3-2)+')':'');
+}
+function words(){
+  if(S.prime>0&&!S.primed)return 'เปิดฝาตรงจุดสูงสุด เทน้ำลงไปจนเต็มท่อ (อากาศจะออกทางรูนี้) แล้วปิดฝาให้แน่น';
+  if(!S.primed)return S.drink>0?'ไก่กินน้ำ แต่ในท่อมีแต่อากาศ น้ำในถังข้ามขอบมาไม่ได้':'ในท่อยังมีแต่อากาศ น้ำในถังข้ามขอบถังไม่ได้ รางเลยแห้ง → กดข้อ 2';
+  if(S.bubble)return 'ฟองอากาศมาค้างตรงจุดสูงสุดของท่อ น้ำขาดตอน ไหลไม่ได้ ไก่กินน้ำเมื่อไหร่ รางจะแห้งลงเรื่อย ๆ → กดข้อ 2 เปิดฝาเติมน้ำใหม่';
+  let t=Math.abs(S.q)>0.8?'น้ำในถังสูงกว่าในราง อากาศกดผิวน้ำในถังได้แรงกว่า น้ำเลยไหลข้ามขอบมาเติมราง':'ผิวน้ำในถังกับในรางสูงเท่ากันแล้ว น้ำหยุดไหลเอง รางไม่ล้น → ลองกดข้อ 3';
+  if(S.valve)t+=' · น้ำในถังลด ลูกลอยตกลง วาล์วเปิดให้น้ำจากก๊อกเติมถัง';
+  return t;
+}
+let last=performance.now();
+function tick(now){
+  requestAnimationFrame(tick);
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(G.hidden)return;                                   // only runs while the guide is open
+  if(!L)L=tubeW.getTotalLength();
+  if(S.prime>0&&!S.primed){S.prime+=dt/1.2;if(S.prime>=1){S.prime=1;S.primed=true;}}
+  if(S.drink>0){S.drink-=dt;S.yt=Math.min(111,S.yt+9*dt);}
+  S.q=(S.primed&&!S.bubble)?K*(S.yt-S.yb):0;
+  S.yb+=S.q*dt/AB;S.yt-=S.q*dt/AT;
+  S.valve=S.yb>YSET+0.3;
+  if(S.valve)S.yb=Math.max(YSET,S.yb-R*dt);
+  S.yt=Math.max(83,Math.min(111,S.yt));S.yb=Math.max(60,Math.min(168,S.yb));
+  off=(off+Math.max(-0.12,Math.min(0.12,S.q*0.002))*dt+1)%1;
+  dripT-=dt;
+  if(S.valve&&dripT<=0){dripT=0.18;const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('r','2');c.setAttribute('class','wat');c.setAttribute('cx','72');c.setAttribute('cy','52');drips.appendChild(c);dripList.push({c,y:52});}
+  for(let i=dripList.length-1;i>=0;i--){const d=dripList[i];d.y+=130*dt;if(d.y>=S.yb){d.c.remove();dripList.splice(i,1);}else d.c.setAttribute('cy',d.y);}
+  draw();say(words());
+}
+requestAnimationFrame(tick);
 })();
 </script>
 </body></html>
