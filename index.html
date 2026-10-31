@@ -700,6 +700,21 @@ const TH=Math.atan((YB-YF)/(ZF-ZW)),LS=Math.hypot(ZF-ZW,YB-YF)+0.05;
   for(let i=0;i<np.count;i++){const u=np.getX(i)/nw,w=np.getZ(i)/nd;np.setY(i,2.08-0.12*(1-4*u*u)*(1-4*w*w));}
   ng.computeVertexNormals();
   mesh(ng,MAT.net,group(roofG,'สแลนกันแดด','ตาข่ายสีดำกรองแสง คลุมทางเดินหน้ากรง'),(XL+XR)/2,0,(ZF+ZFENCE)/2,{noCast:true});
+  // rain gutter under the low front edge, falling 4 cm to a downpipe at the right corner
+  const gutM=std({color:0xd3d8db,metalness:0.45,roughness:0.42,side:DS});
+  const gutG=group(roofG,'รางน้ำฝน','รางรับน้ำฝนใต้ชายคาด้านหน้า ลาดลงไปทางขวาเล็กน้อย น้ำจะไหลไปลงท่อที่มุมขวา');
+  const gx0=XL-0.15,gx1=XL+0.25+4*0.72+0.4,gz=ZF+0.09,gr=0.065,gyL=YF-0.03,gyR=YF-0.07,glen=gx1-gx0,gf=Math.atan2(gyL-gyR,glen);
+  const gy=x=>gyL+(gyR-gyL)*(x-gx0)/glen;
+  mesh(new THREE.CylinderGeometry(gr,gr,glen,16,1,true,0,Math.PI),gutM,gutG,(gx0+gx1)/2,(gyL+gyR)/2,gz,{rot:[0,0,-Math.PI/2-gf]});
+  [[gx0,gyL],[gx1,gyR]].forEach(([x,y])=>mesh(new THREE.CircleGeometry(gr,12,Math.PI,Math.PI),gutM,gutG,x,y,gz,{rot:[0,Math.PI/2,0]}));
+  for(let x=gx0+0.2;x<gx1-0.1;x+=0.8){ boxM(0.02,0.008,2*gr+0.03,gutM,gutG,x,gy(x)-gr-0.004,gz); boxM(0.02,0.07,0.008,gutM,gutG,x,gy(x)-0.03,gz-gr-0.008); }
+  const pipeG=group(roofG,'ท่อน้ำฝนลง','ท่อพาน้ำจากรางลงดินที่มุมขวาหน้า ปลายท่อหันออกนอกเล้า ลงบนแผ่นปูนกันดินกระเซ็น');
+  const pr=0.035,ox=gx1-0.12,oy=gy(ox)-gr+0.01;
+  const tube=(a,b)=>{ const d=new THREE.Vector3().subVectors(b,a),m=mesh(new THREE.CylinderGeometry(pr,pr,d.length(),12),gutM,pipeG,(a.x+b.x)/2,(a.y+b.y)/2,(a.z+b.z)/2); m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize()); };
+  const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+  tube(V(ox,oy,gz),V(ox,0.24,gz)); tube(V(ox,0.24,gz),V(ox,0.07,gz+0.2));
+  [0.8,1.6].forEach(y=>boxM(ox-XR,0.025,0.02,gutM,pipeG,(ox+XR)/2,y,gz-0.05));
+  boxM(0.26,0.04,0.42,MAT.paver,pipeG,ox,0.02,gz+0.38);
 }
 const postsG=group(scene,'เสาไม้','เสาไม้รับหลังคาด้านหน้า');
 boxM(XR-XL+0.3,0.12,0.08,MAT.woodOld,postsG,(XL+XR)/2,roofY(ZF)-0.22,ZF);
